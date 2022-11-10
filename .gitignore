@@ -1,0 +1,13 @@
+*.pyc
+*.c
+*__pycache__/
+*remove/
+*_rm.py
+*.msh
+*.h5m
+*.h5
+*.npy
+*.npz
+*.vtk
+!cube_unstructured.msh
+!cube_structured.msh
