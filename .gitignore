@@ -1,3 +1,13 @@
+*.dat
+*.unv
+*.sauv
+*.idea
+*.hdf
+*.hdf5
+*.med
+*.stl
+*.cgns
+*.gmsh
 *.pyc
 *.c
 *__pycache__/
@@ -11,3 +21,5 @@
 *.vtk
 !cube_unstructured.msh
 !cube_structured.msh
+*.geo
+

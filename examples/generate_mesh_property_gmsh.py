@@ -23,7 +23,8 @@ gmsh.model.add("test")
 
 # gmsh.open('mesh/cube_structured.msh')
 # gmsh.open('mesh/cube_unstructured.msh')
-gmsh.open('mesh/cube_structured2_test.msh')
+# gmsh.open('mesh/cube_structured2_test.msh')
+gmsh.open('mesh/cube10_salome.gmsh')
 
 def get_nodes():
     """return the nodes, center nodes and the boolean boundary_nodes
@@ -50,7 +51,9 @@ def get_nodes():
     
     
 
-# elementTypess, elementTag, nodeElement = gmsh.model.mesh.getElements()
+elementTypess, elementTag, nodeElement = gmsh.model.mesh.getElements()
+print(elementTypess)
+import pdb; pdb.set_trace()
 
 # elementTypes = gmsh.model.mesh.getElementTypes()
 
@@ -59,6 +62,13 @@ def get_nodes():
 # print(len(elementTags))
 
 print(gmsh.model.getPhysicalGroups(dim=2))
+groups = gmsh.model.getPhysicalGroups(dim=2)
+
+
+ents = gmsh.model.getEntitiesForPhysicalGroup(2, groups[0][1])
+print(ents)
+print(gmsh.model.getType(2, ents[0]))
+import pdb; pdb.set_trace()
 
 # get_nodes()
 
