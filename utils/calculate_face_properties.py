@@ -80,6 +80,49 @@ def get_unitary_normal_vector(vs):
     unitary = normal/np.linalg.norm(normal)
     return unitary
     
+def sort_vertices_of_all_faces(faces, vertices_of_faces, vertices_centroids):
+    """reordena os vertices em ordem circular,
+    os vertices sao alterados no proprio array
     
+    ###########
+        obs
+        esse codigo pode ser paralelizado
+    ###########
+
+    Args:
+        faces (_type_): face ids
+        vertices_of_faces (_type_): _description_
+    """
     
+    for face in faces:
+        vf = vertices_of_faces[face]
+        indices = np.arange(len(vf))
+        cent_vertices = vertices_centroids[vf]
+        new_indices = sort_radial_sweep(cent_vertices, indices)
+        vertices_of_faces[face][:] = vf[new_indices]   
     
+
+def define_normal_and_area(faces, vertices_of_faces, vertices_centroids):
+    """return the area and unitary normal
+
+    Args:
+        faces (_type_): faces ids
+        vertices_of_faces (_type_): vertices of faces
+        volumes_adj_by_faces (_type_): volumes adjacencies
+        volumes_centroids (_type_): volumes centroids
+    """
+    
+    all_unitary_normals = np.zeros((len(faces), 3))
+    all_areas = np.zeros(len(faces))
+    
+    sort_vertices_of_all_faces(faces, vertices_of_faces, vertices_centroids)
+    
+    for face in faces:
+        vf = vertices_of_faces[face]
+        cent_vertices = vertices_centroids[vf]
+        area = polygon_area(cent_vertices)
+        unitary_normal = get_unitary_normal_vector(cent_vertices)
+        all_unitary_normals[face][:] = unitary_normal
+        all_areas[face] = area
+    
+    return all_areas, all_unitary_normals

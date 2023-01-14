@@ -274,7 +274,7 @@ class CreateMeshProperties():
         self.mb.write_file(os.path.join(defpaths.mesh, self.mesh_name) + '.msh')
         
     
-    def create_mesh_data(self):
+    def create_3d_mesh_data(self):
         self.init_mesh()
         self.init_mesh_entities()
         self.create_initial_array_properties()

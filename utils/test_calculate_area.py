@@ -1,5 +1,5 @@
 import unittest
-from utils import calculate_area
+from utils import calculate_face_properties as calculate_area
 import numpy as np
 
 class TestCalculateArea(unittest.TestCase):
@@ -22,6 +22,7 @@ class TestCalculateArea(unittest.TestCase):
         self.assertTrue(np.allclose(new_ids, idtest), 'ERRO test_order_vertices')
     
     def test_calculate_area_poly_3d(self):
+        
         
         indices = np.arange(len(self.vtest))
         new_ids = calculate_area.sort_radial_sweep(self.vtest, indices)
