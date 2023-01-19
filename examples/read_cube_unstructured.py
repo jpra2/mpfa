@@ -23,10 +23,10 @@ mesh_properties.insert_data(
     }
 )
 
-mesh_properties.export_data()
+# mesh_properties.export_data()
 
-
-import pdb; pdb.set_trace()
+print(dir(mesh_properties))
+# import pdb; pdb.set_trace()
 
 
 

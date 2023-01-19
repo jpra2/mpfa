@@ -144,7 +144,7 @@ class CreateMeshProperties():
     def init_mesh(self):
         self.mb, self.mtu, self.root_set = self._init_mesh()
 
-    def init_mesh_entities(self):
+    def init_3d_mesh_entities(self):
         self.all_volumes = self.mb.get_entities_by_dimension(0, 3)
         self.all_nodes = self.mb.get_entities_by_dimension(0, 0)
         boundary_faces = self.mb.get_entities_by_dimension(0, 2)
@@ -186,7 +186,27 @@ class CreateMeshProperties():
         
         self.all_edges = self.mb.get_entities_by_dimension(0, 1)
 
-    def _init_properties(self, faces, volumes, nodes):
+    def init_2d_mesh_entities(self):
+        self.all_nodes = self.mb.get_entities_by_dimension(0, 0)
+        self.all_faces = self.mb.get_entities_by_dimension(0, 2)
+        
+        # type_moab = self.mb.type_from_handle(self.root_set)
+        all_moab_types = dir(types)
+        
+        self.dict_moab_types = dict()
+        
+        for tt in all_moab_types[0:-20]:
+            
+            # exec('print(types.' + tt + ')')
+            # exec('respp[tt] = types.' + tt)
+            exec('self.dict_moab_types[types.' + tt +'] = tt')
+        
+        boundary_edges = self.mb.get_entities_by_dimension(0, 1)
+        self.mtu.construct_aentities(self.all_nodes)
+        
+        self.all_edges = self.mb.get_entities_by_dimension(0, 1)
+
+    def _init_3d_properties(self, faces, volumes, nodes):
         n_faces = len(faces)
         volumes_adj_by_faces = np.repeat(-1, n_faces*2).reshape((n_faces, 2)).astype(np.uint64)
         volumes_series = pd.DataFrame({
@@ -238,14 +258,72 @@ class CreateMeshProperties():
         bool_internal_faces = test
 
         return bool_internal_faces, volumes_adj_by_faces, nodes_of_faces, faces_of_volumes, nodes_of_volumes, volumes_adj_by_nodes
+    
+    def _init_2d_properties(self, faces, edges, nodes, nodes_centroids):
+        n_edges = len(edges)
+        faces_adj_by_edges = np.repeat(-1, n_edges*2).reshape((n_edges, 2)).astype(np.uint64)
+        nodes_of_edges = faces_adj_by_edges.copy()
+        faces_centroids = np.zeros((len(faces), 3))
 
-    def create_initial_array_properties(self):
+        nodes_series = pd.DataFrame({
+            'nodes_ids': nodes
+        }, index=self.all_nodes)
+        
+        faces_series = pd.DataFrame({
+            'faces_ids': faces
+        }, index=self.all_faces)
+        
+        edges_series = pd.DataFrame({
+            'edges_ids': edges
+        }, index=self.all_edges)
+        
+        # nodes_of_faces = np.repeat(-1, n_faces*4).reshape((n_faces, 4)).astype(np.uint64)
+        nodes_of_faces = []
+        edges_of_faces = []
+        faces_adj_by_nodes = []
+
+        for i, edge in enumerate(self.all_edges):
+            faces_adj_by_edges[i][:] = self.mtu.get_bridge_adjacencies(edge, 1, 2)
+            nodes_of_edge_elems = self.mtu.get_bridge_adjacencies(edge, 1, 0) 
+            nodes_of_edges[i][:]= nodes_series.loc[nodes_of_edge_elems].to_numpy().flatten()
+            
+        for i, face in enumerate(self.all_faces):
+            edges_of_face_elements = self.mtu.get_bridge_adjacencies(face, 2, 1)
+            nodes_of_face_elements = self.mtu.get_bridge_adjacencies(face, 2, 0)
+            faces_by_nodes_elements = self.mtu.get_bridge_adjacencies(face, 0, 2)
+            
+            edges_of_faces_loc = edges_series.loc[edges_of_face_elements].to_numpy().flatten()
+            
+            nodes_of_face_loc = nodes_series.loc[nodes_of_face_elements].to_numpy().flatten()
+            
+            faces_by_nodes_loc = faces_series.loc[faces_by_nodes_elements].to_numpy().flatten()
+            
+            edges_of_faces.append(edges_of_faces_loc)
+            nodes_of_faces.append(nodes_of_face_loc)
+            faces_adj_by_nodes.append(faces_by_nodes_loc)
+            faces_centroids[i][:] = np.mean(nodes_centroids[nodes_of_face_loc], axis=0)
+        
+
+        test = faces_adj_by_edges[:, 0] == faces_adj_by_edges[:, 1]
+        faces_adj_by_edges[:, 0] = faces_series.loc[faces_adj_by_edges[:, 0]].to_numpy().flatten()
+        faces_adj_by_edges[:, 1] = faces_series.loc[faces_adj_by_edges[:, 1]].to_numpy().flatten()
+        faces_adj_by_edges = faces_adj_by_edges.astype(np.int64)
+        faces_adj_by_edges[test, 1] = -1
+        
+        nodes_of_faces = np.array(nodes_of_faces)
+        edges_of_faces = np.array(edges_of_faces)
+        faces_adj_by_nodes = np.array(faces_adj_by_nodes)
+        bool_boundary_edges = test        
+        
+        return bool_boundary_edges, faces_adj_by_edges, nodes_of_faces, edges_of_faces, faces_adj_by_nodes, nodes_of_edges, faces_centroids
+        
+    def create_3d_initial_array_properties(self):
 
         volumes = np.arange(len(self.all_volumes), dtype=int)
         faces = np.arange(len(self.all_faces), dtype=int)
         edges = np.arange(len(self.all_edges), dtype=int)
         nodes = np.arange(len(self.all_nodes), dtype=int)
-        bool_internal_faces, volumes_adj_by_faces, nodes_of_faces, faces_of_volumes, nodes_of_volumes, volumes_adj_by_nodes =  self._init_properties(faces, volumes, nodes)
+        bool_internal_faces, volumes_adj_by_faces, nodes_of_faces, faces_of_volumes, nodes_of_volumes, volumes_adj_by_nodes =  self._init_3d_properties(faces, volumes, nodes)
 
         nodes_centroids = np.array([self.mb.get_coords(node) for node in self.all_nodes])
 
@@ -266,25 +344,61 @@ class CreateMeshProperties():
         self.data['nodes_of_volumes'] = nodes_of_volumes
         self.data['mesh_name'] = np.array([self.mesh_name])
     
+    def create_2d_initial_array_properties(self):
+        
+        faces = np.arange(len(self.all_faces), dtype=int)
+        edges = np.arange(len(self.all_edges), dtype=int)
+        nodes = np.arange(len(self.all_nodes), dtype=int)
+        nodes_centroids = np.array([self.mb.get_coords(node) for node in self.all_nodes])
+        
+        bool_boundary_edges, faces_adj_by_edges, nodes_of_faces, edges_of_faces, faces_adj_by_nodes, nodes_of_edges, faces_centroids =  self._init_2d_properties(faces, edges, nodes, nodes_centroids)
+
+        
+
+        # av2 = np.array(self.all_volumes, np.uint64)
+        #
+        # vc = self.mtu.get_average_position(av2[0])
+
+        self.data['faces'] = faces
+        self.data['edges'] = edges
+        self.data['nodes'] = nodes
+        self.data['bool_boundary_edges'] = bool_boundary_edges
+        self.data['faces_adj_by_edges'] = faces_adj_by_edges
+        self.data['faces_adj_by_nodes'] = faces_adj_by_nodes
+        self.data['nodes_of_faces'] = nodes_of_faces
+        self.data['nodes_centroids'] = nodes_centroids
+        self.data['edges_of_faces'] = edges_of_faces
+        self.data['mesh_name'] = np.array([self.mesh_name])
+        self.data['nodes_of_edges'] = nodes_of_edges
+        self.data['faces_centroids'] = faces_centroids
+        
     def export_data_msh(self):
         # import pdb; pdb.set_trace()
         tags = self.mb.tag_get_tags_on_entity(self.root_set)
         import pdb; pdb.set_trace()
         
         self.mb.write_file(os.path.join(defpaths.mesh, self.mesh_name) + '.msh')
-        
-    
+          
     def create_3d_mesh_data(self):
         self.init_mesh()
-        self.init_mesh_entities()
-        self.create_initial_array_properties()
+        self.init_3d_mesh_entities()
+        self.create_3d_initial_array_properties()
         mesh_property = MeshProperty()
         mesh_property.insert_mesh_name(self.data['mesh_name'][0])
         mesh_property.insert_data(copy.deepcopy(self.data))
         mesh_property.export_data()
         return mesh_property
         
-
+    def create_2d_mesh_data(self):
+        self.init_mesh()
+        self.init_2d_mesh_entities()
+        self.create_2d_initial_array_properties()
+        mesh_property = MeshProperty()
+        mesh_property.insert_mesh_name(self.data['mesh_name'][0])
+        mesh_property.insert_data(copy.deepcopy(self.data))
+        mesh_property.export_data()
+        return mesh_property
+        
 
 
 

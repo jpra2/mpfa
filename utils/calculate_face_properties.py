@@ -101,7 +101,6 @@ def sort_vertices_of_all_faces(faces, vertices_of_faces, vertices_centroids):
         new_indices = sort_radial_sweep(cent_vertices, indices)
         vertices_of_faces[face][:] = vf[new_indices]   
     
-
 def define_normal_and_area(faces, vertices_of_faces, vertices_centroids):
     """return the area and unitary normal
 
@@ -126,3 +125,88 @@ def define_normal_and_area(faces, vertices_of_faces, vertices_centroids):
         all_areas[face] = area
     
     return all_areas, all_unitary_normals
+
+def correction_faces_vertices_order(unitary_normal_vector, nodes_of_faces, vector):
+    test = unitary_normal_vector == vector
+    test = np.all(test, axis=1)
+    test = ~test
+    nodes_of_faces[test] = np.flip(nodes_of_faces[test], axis=1)
+    
+def create_unitary_normal_edges_xy_plane(nodes_of_edges, centroids_of_nodes, faces_adj_by_edges, faces_centroids):
+    
+    vertices_of_edges = centroids_of_nodes[nodes_of_edges]
+    edges_centroids = np.mean(vertices_of_edges, axis=1)
+    vector_edges = vertices_of_edges[:, 1] - vertices_of_edges[:, 0]
+    edge_dim = np.linalg.norm(vector_edges, axis=1)
+    
+    ## matriz rotação de pi/2 no plano xy
+    if vector_edges.shape[1] == 3:
+        R_matrix = np.array([[0, 1, 0],
+                             [-1, 0, 0],
+                             [0, 0, 0]])
+    elif vector_edges.shape[1] == 2:
+        R_matrix = np.array([[0, 1],
+                             [-1, 0]])
+    else:
+        raise ValueError
+    
+    
+    faces_direction_vector = faces_centroids[faces_adj_by_edges[:, 1]] - faces_centroids[faces_adj_by_edges[:, 0]]
+    
+    boundary_edges = faces_adj_by_edges[:,1] == -1
+    
+    faces_direction_vector[boundary_edges] = edges_centroids[boundary_edges] - faces_centroids[faces_adj_by_edges[boundary_edges, 0]]
+    
+    normal_edges = np.matmul(vector_edges, R_matrix)
+    norm = np.linalg.norm(normal_edges, axis=1)
+    unitary_normal_edges = normal_edges/norm.reshape((norm.shape[0], 1))
+    
+    proj = np.diag(np.tensordot(unitary_normal_edges, faces_direction_vector, axes=((1), (1))))
+    
+    test = proj < 0
+    unitary_normal_edges[test] = -1*unitary_normal_edges[test]
+    
+    return norm, unitary_normal_edges
+
+def distance_from_point_to_line(point, line_point_1, line_point_2):
+    
+    norm = np.linalg.norm
+    p1 = line_point_1
+    p2 = line_point_2
+
+    p3 = point
+    distance = np.abs(norm(np.cross(p2-p1, p1-p3)))/norm(p2-p1)
+    
+    return distance
+
+def create_face_to_edge_distances(faces_centroids, faces_adj_by_edges, nodes_of_edges, edges, nodes_centroids):
+    
+    face_to_edge_distance = np.zeros(faces_adj_by_edges.shape)
+    
+    bool_boundary_edges = faces_adj_by_edges[:, 1] == -1
+    bool_internal_edges = ~bool_boundary_edges
+    internal_edges = edges[bool_internal_edges]
+    
+    for edge, faces in zip(internal_edges, faces_adj_by_edges[bool_internal_edges]):
+        centroids_of_nodes_edge = nodes_centroids[nodes_of_edges[edge]]
+        face_to_edge_distance[edge][:] = [
+            distance_from_point_to_line(faces_centroids[faces[0]], centroids_of_nodes_edge[0], centroids_of_nodes_edge[1]),
+            distance_from_point_to_line(faces_centroids[faces[1]], centroids_of_nodes_edge[0], centroids_of_nodes_edge[1])
+        ]
+    
+    
+    
+    return face_to_edge_distance
+    
+def ordenate_nodes_of_edges(edges, faces_adj_by_edges, nodes_of_faces, nodes_of_edges):
+    
+    for edge, faces in zip(edges, faces_adj_by_edges):
+        nodes_of_face0 = nodes_of_faces[faces[0]]
+        nedges = nodes_of_edges[edge]
+        position_1 = np.argwhere(nodes_of_face0==nedges[0]).flatten()[0]
+        position_2 = np.argwhere(nodes_of_face0==nedges[1]).flatten()[0]
+        if position_2 > position_1:
+            continue
+        else:
+            nodes_of_edges[edge][:] = np.flip(nedges)
+        
