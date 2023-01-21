@@ -27,6 +27,7 @@ class MeshProperty:
     
     def insert_mesh_name(self, name=''):
         self.__dict__['mesh_name'] = name
+        
     
     def insert_data(self, data: dict):
         """data is a dictionary with str keys and np.ndarray values
@@ -100,16 +101,16 @@ class MeshProperty:
     #     return self._data['faces_of_volumes']
     
     @property
-    def mesh_path(self):
+    def class_path(self):
         return os.path.join(defpaths.flying, 'mesh_property_' + self.mesh_name[0] + '.npz')
     
     def export_data(self):
-        manager = ArrayDataManager(self.mesh_path)
+        manager = ArrayDataManager(self.class_path)
         manager.insert_data(self.__dict__)
         manager.export()
 
     def load_data(self):
-        manager = ArrayDataManager(self.mesh_path)
+        manager = ArrayDataManager(self.class_path)
         self.insert_data(manager.get_data_from_load())
         
     
@@ -312,10 +313,59 @@ class CreateMeshProperties():
         
         nodes_of_faces = np.array(nodes_of_faces)
         edges_of_faces = np.array(edges_of_faces)
-        faces_adj_by_nodes = np.array(faces_adj_by_nodes)
+        faces_adj_by_nodes = np.array(faces_adj_by_nodes, dtype='O')
         bool_boundary_edges = test        
         
         return bool_boundary_edges, faces_adj_by_edges, nodes_of_faces, edges_of_faces, faces_adj_by_nodes, nodes_of_edges, faces_centroids
+        
+    def get_nodes_and_edges_and_faces_adjacencies_by_nodes(self, nodes, edges, nodes_of_edges, faces):
+        
+        nodes_series = pd.DataFrame({
+            'nodes_ids': nodes
+        }, index=self.all_nodes)
+        
+        edges_series = pd.DataFrame({
+            'edges_ids': edges
+        }, index=self.all_edges)
+        
+        faces_series = pd.DataFrame({
+            'faces_ids': faces
+        }, index=self.all_faces)
+        
+        nodes_adj_by_nodes = []
+        edges_adj_by_nodes = []
+        faces_adj_by_nodes = []
+        
+        for node_elem in self.all_nodes:
+            nodes_adj_elem = self.mtu.get_bridge_adjacencies(node_elem, 1, 0)
+            edges_adj_elem = self.mtu.get_bridge_adjacencies(node_elem, 0, 1)
+            faces_adj_elem = self.mtu.get_bridge_adjacencies(node_elem, 0, 2)
+            
+            nodes_adj = nodes_series.loc[nodes_adj_elem].to_numpy().flatten()
+            edges_adj = edges_series.loc[edges_adj_elem].to_numpy().flatten()
+            faces_adj = faces_series.loc[faces_adj_elem].to_numpy().flatten()
+            
+            node = nodes_series.loc[node_elem].values[0]
+            nodes_of_edges_adj = nodes_of_edges[edges_adj]
+            
+            test = nodes_of_edges_adj[nodes_of_edges_adj != node]
+            
+            order = pd.DataFrame({
+                'index_edges': np.arange(len(edges_adj))
+            }, index=test)
+            
+            order_correct = order.loc[nodes_adj].values.flatten()
+            
+            nodes_adj_by_nodes.append(nodes_adj)
+            edges_adj_by_nodes.append(edges_adj[order_correct])
+            faces_adj_by_nodes.append(faces_adj)
+            
+        
+        nodes_adj_by_nodes = np.array(nodes_adj_by_nodes, dtype='O')
+        edges_adj_by_nodes = np.array(edges_adj_by_nodes, dtype='O')
+        faces_adj_by_nodes = np.array(faces_adj_by_nodes, dtype='O')
+        
+        return nodes_adj_by_nodes, edges_adj_by_nodes, faces_adj_by_nodes
         
     def create_3d_initial_array_properties(self):
 
@@ -352,9 +402,23 @@ class CreateMeshProperties():
         nodes_centroids = np.array([self.mb.get_coords(node) for node in self.all_nodes])
         
         bool_boundary_edges, faces_adj_by_edges, nodes_of_faces, edges_of_faces, faces_adj_by_nodes, nodes_of_edges, faces_centroids =  self._init_2d_properties(faces, edges, nodes, nodes_centroids)
-
         
-
+        nodes_adj_by_nodes, edges_adj_by_nodes, faces_adj_by_nodes = self.get_nodes_and_edges_and_faces_adjacencies_by_nodes(nodes, edges, nodes_of_edges, faces)
+        
+        from utils import calculate_face_properties
+        
+        calculate_face_properties.ordenate_edges_and_nodes_of_nodes_xy_plane(
+            nodes,
+            edges, 
+            nodes_adj_by_nodes,
+            edges_adj_by_nodes,
+            nodes_centroids
+        )
+        
+        calculate_face_properties.ordenate_faces_of_nodes_xy_plane(faces_centroids, faces_adj_by_nodes, nodes_centroids)
+        
+        bool_boundary_nodes = calculate_face_properties.define_bool_boundary_nodes(bool_boundary_edges, nodes_of_edges, nodes)
+        
         # av2 = np.array(self.all_volumes, np.uint64)
         #
         # vc = self.mtu.get_average_position(av2[0])
@@ -371,6 +435,9 @@ class CreateMeshProperties():
         self.data['mesh_name'] = np.array([self.mesh_name])
         self.data['nodes_of_edges'] = nodes_of_edges
         self.data['faces_centroids'] = faces_centroids
+        self.data['nodes_adj_by_nodes'] = nodes_adj_by_nodes
+        self.data['edges_adj_by_nodes'] = edges_adj_by_nodes
+        self.data['bool_boundary_nodes'] = bool_boundary_nodes
         
     def export_data_msh(self):
         # import pdb; pdb.set_trace()

@@ -1,6 +1,34 @@
 import numpy as np
 import math
 
+def sort_radial_sweep_by_centroid(centroid, points, points_indices):
+    cent = centroid
+    vs = points
+    indices = points_indices
+    
+    r0 = (vs[0] - cent)/np.linalg.norm(vs[0] - cent)
+    nor = np.cross(vs[1] - cent, r0)
+    nor = nor/np.linalg.norm(nor)
+    
+    # Pairs of (vertex index, angle to centroid)
+    vpairs = []
+    for vi, vpos in zip(indices, vs):
+        # r1 = (vpos - cent).normalized()
+        r1 = vpos - cent
+        r1 = r1/np.linalg.norm(r1)
+        dot = np.dot(r1,r0)
+        angle = math.acos(max(min(dot, 1), -1))
+        # angle *= 1 if nor.dot(r1.cross(r0)) >= 0 else -1
+        dottest = np.dot(nor, np.cross(r1, r0))
+        angle *= 1 if dottest >= 0 else -1        
+        vpairs.append((vi, angle))
+    
+    # Sort by angle and return indices
+    vpairs.sort(key=lambda v: v[1])
+    # return np.array([vi for vi, angle in vpairs])
+    return np.array([vi for vi, angle in vpairs])
+    
+
 def sort_radial_sweep(vs, indices):
     """
     Given a list of vertex positions (vs) and indices
@@ -47,6 +75,29 @@ def sort_radial_sweep(vs, indices):
     # return np.array([vi for vi, angle in vpairs])
     return np.array([vi for vi, angle in vpairs])
 
+def sort_vertices_by_zdirection_xy_plane(vs, zdirection=np.array([0, 0, 1])):
+    cent = np.mean(vs, axis=0)
+    index = np.arange(len(vs))
+    v1 = vs[0] - cent
+    v2 = vs[1] - cent
+    cross_vector = np.cross(v1, v2)
+    dot_prod = np.dot(cross_vector, zdirection)
+    if dot_prod > 0:
+        return index
+    else:
+        return np.flip(index)
+
+def sort_vertices_by_zdirection_xy_plane_by_centroid(centroid, vs, zdirection=np.array([0, 0, 1])):
+    cent = centroid
+    index = np.arange(len(vs))
+    v1 = vs[0] - cent
+    v2 = vs[1] - cent
+    cross_vector = np.cross(v1, v2)
+    dot_prod = np.dot(cross_vector, zdirection)
+    if dot_prod > 0:
+        return index
+    else:
+        return np.flip(index)
 
 def polygon_area(poly):
     """Calculate the area of 3d polygon from ordered vertices points (poly)
@@ -137,7 +188,7 @@ def create_unitary_normal_edges_xy_plane(nodes_of_edges, centroids_of_nodes, fac
     vertices_of_edges = centroids_of_nodes[nodes_of_edges]
     edges_centroids = np.mean(vertices_of_edges, axis=1)
     vector_edges = vertices_of_edges[:, 1] - vertices_of_edges[:, 0]
-    edge_dim = np.linalg.norm(vector_edges, axis=1)
+    
     
     ## matriz rotação de pi/2 no plano xy
     if vector_edges.shape[1] == 3:
@@ -210,3 +261,56 @@ def ordenate_nodes_of_edges(edges, faces_adj_by_edges, nodes_of_faces, nodes_of_
         else:
             nodes_of_edges[edge][:] = np.flip(nedges)
         
+def ordenate_edges_and_nodes_of_nodes_xy_plane(nodes, edges, nodes_adj_by_nodes, edges_adj_by_nodes, nodes_centroids):
+    
+    for node in nodes:
+        nodes_adj = nodes_adj_by_nodes[node]
+        edges_adj = edges_adj_by_nodes[node]
+        
+        centroids_nodes_adj = nodes_centroids[nodes_adj]
+        index_sorted = sort_radial_sweep(centroids_nodes_adj, np.arange(len(centroids_nodes_adj)))
+        
+        nodes_adj[:] = nodes_adj[index_sorted]
+        edges_adj[:] = edges_adj[index_sorted]
+        centroids_nodes_adj[:] = nodes_centroids[nodes_adj]
+        
+        new_index = sort_vertices_by_zdirection_xy_plane(centroids_nodes_adj)
+        
+        nodes_adj[:] = nodes_adj[new_index]
+        edges_adj[:] = edges_adj[new_index]       
+        
+        nodes_adj_by_nodes[node][:] = nodes_adj
+        edges_adj_by_nodes[node][:] = edges_adj
+        
+def ordenate_faces_of_nodes_xy_plane(faces_centroids, faces_adj_by_nodes, nodes_centroids):
+    
+    for i, faces in enumerate(faces_adj_by_nodes):
+        centroid_faces = faces_centroids[faces][:]
+        
+        if len(faces) == 2:
+            centroid_node = nodes_centroids[i]
+            ordenate_index = sort_radial_sweep_by_centroid(centroid_node, centroid_faces, np.arange(len(centroid_faces)))
+            centroid_faces[:] = centroid_faces[ordenate_index]
+            faces2 = faces[ordenate_index]
+            new_index = sort_vertices_by_zdirection_xy_plane_by_centroid(centroid_node, centroid_faces)
+            centroid_faces[:] = centroid_faces[new_index]
+        
+        elif len(faces) > 2:    
+            ordenate_index = sort_radial_sweep(centroid_faces, np.arange(len(centroid_faces)))
+            centroid_faces[:] = centroid_faces[ordenate_index]
+            faces2 = faces[ordenate_index]
+            new_index = sort_vertices_by_zdirection_xy_plane(centroid_faces)
+        
+        else:
+            continue
+        
+        centroid_faces[:] = centroid_faces[new_index]
+        faces_adj_by_nodes[i][:] = faces2[new_index]
+
+def define_bool_boundary_nodes(bool_boundary_edges, nodes_of_edges, nodes):
+    
+    bool_boundary_nodes = np.full(len(nodes), False, dtype=bool)
+    nodes_in_boundary = np.unique(nodes_of_edges[bool_boundary_edges].flatten())
+    bool_boundary_nodes[nodes_in_boundary] = True
+    return bool_boundary_nodes
+    

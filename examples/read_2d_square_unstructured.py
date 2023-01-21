@@ -3,7 +3,7 @@ from datamanager.meshmanager import CreateMeshProperties, MeshProperty
 from definitions import defpaths
 from utils import calculate_face_properties
 import numpy as np
-
+from mpfa.linearity_preserving.preprocess import MpfaLinearityPreservingPreprocess2D
 
 ###
 ## run the code examples.create_cube_unstructured for generate mesh
@@ -52,6 +52,13 @@ calculate_face_properties.ordenate_nodes_of_edges(
     nodes_of_faces=mesh_properties.nodes_of_faces,
     nodes_of_edges=mesh_properties.nodes_of_edges
 )
+
+mpfaprepropcess = MpfaLinearityPreservingPreprocess2D()
+
+tk = mpfaprepropcess.create_Tk_point(
+    mesh_properties.nodes_centroids[mesh_properties.nodes_of_edges]
+)
+
 import pdb; pdb.set_trace()
 
 mesh_properties.export_data()
