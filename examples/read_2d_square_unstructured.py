@@ -44,8 +44,6 @@ h_distance = calculate_face_properties.create_face_to_edge_distances(
     nodes_centroids=mesh_properties.nodes_centroids
 )
 
-
-
 calculate_face_properties.ordenate_nodes_of_edges(
     edges=mesh_properties.edges,
     faces_adj_by_edges=mesh_properties.faces_adj_by_edges,
@@ -55,8 +53,23 @@ calculate_face_properties.ordenate_nodes_of_edges(
 
 mpfaprepropcess = MpfaLinearityPreservingPreprocess2D()
 
-tk = mpfaprepropcess.create_Tk_point(
+
+
+tk_points = mpfaprepropcess.create_Tk_point(
     mesh_properties.nodes_centroids[mesh_properties.nodes_of_edges]
+)
+
+phis_and_thetas = mpfaprepropcess.create_phis_and_thetas(
+    mesh_properties.nodes,
+    mesh_properties.edges,
+    mesh_properties.faces,
+    mesh_properties.nodes_centroids,
+    mesh_properties.faces_centroids,
+    mesh_properties.nodes_of_edges,
+    tk_points,
+    mesh_properties.edges_of_faces,
+    mesh_properties.faces_adj_by_nodes,
+    mesh_properties.edges_adj_by_nodes
 )
 
 import pdb; pdb.set_trace()

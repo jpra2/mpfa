@@ -8,20 +8,10 @@ import pandas as pd
 import copy
 from definitions import defpaths
 import os
-from datamanager.arraydatamanager import ArrayDataManager
+from datamanager.arraydatamanager import ArrayDataManager, test_str_instance, test_array_instance
 from pack_errors import errors
+from utils import calculate_face_properties
 
-def test_array_instance(data):
-    if isinstance(data, np.ndarray):
-        pass
-    else:
-        raise TypeError
-
-def test_str_instance(data):
-    if isinstance(data, str):
-        pass
-    else:
-        raise TypeError
 
 class MeshProperty:
     
@@ -115,7 +105,7 @@ class MeshProperty:
         
     
 
-class CreateMeshProperties():
+class CreateMeshProperties:
 
     '''
         Create mesh properties using pymoab
@@ -404,8 +394,6 @@ class CreateMeshProperties():
         bool_boundary_edges, faces_adj_by_edges, nodes_of_faces, edges_of_faces, faces_adj_by_nodes, nodes_of_edges, faces_centroids =  self._init_2d_properties(faces, edges, nodes, nodes_centroids)
         
         nodes_adj_by_nodes, edges_adj_by_nodes, faces_adj_by_nodes = self.get_nodes_and_edges_and_faces_adjacencies_by_nodes(nodes, edges, nodes_of_edges, faces)
-        
-        from utils import calculate_face_properties
         
         calculate_face_properties.ordenate_edges_and_nodes_of_nodes_xy_plane(
             nodes,

@@ -245,7 +245,11 @@ def create_face_to_edge_distances(faces_centroids, faces_adj_by_edges, nodes_of_
             distance_from_point_to_line(faces_centroids[faces[1]], centroids_of_nodes_edge[0], centroids_of_nodes_edge[1])
         ]
     
+    bedges = edges[bool_boundary_edges]
     
+    for edge, faces in zip(bedges, faces_adj_by_edges[bool_boundary_edges]):
+        centroids_of_nodes_edge = nodes_centroids[nodes_of_edges[edge]]
+        face_to_edge_distance[edge][0] = distance_from_point_to_line(faces_centroids[faces[0]], centroids_of_nodes_edge[0], centroids_of_nodes_edge[1])
     
     return face_to_edge_distance
     
