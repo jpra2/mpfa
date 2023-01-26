@@ -254,7 +254,7 @@ class CreateMeshProperties:
         n_edges = len(edges)
         faces_adj_by_edges = np.repeat(-1, n_edges*2).reshape((n_edges, 2)).astype(np.uint64)
         nodes_of_edges = faces_adj_by_edges.copy()
-        faces_centroids = np.zeros((len(faces), 3))
+        faces_centroids = np.zeros((len(faces), nodes_centroids.shape[1]))
 
         nodes_series = pd.DataFrame({
             'nodes_ids': nodes

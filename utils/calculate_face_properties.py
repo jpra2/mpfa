@@ -183,7 +183,7 @@ def correction_faces_vertices_order(unitary_normal_vector, nodes_of_faces, vecto
     test = ~test
     nodes_of_faces[test] = np.flip(nodes_of_faces[test], axis=1)
     
-def create_unitary_normal_edges_xy_plane(nodes_of_edges, centroids_of_nodes, faces_adj_by_edges, faces_centroids):
+def create_unitary_normal_edges_xy_plane(nodes_of_edges, centroids_of_nodes, faces_adj_by_edges, faces_centroids, bool_boundary_edges):
     
     vertices_of_edges = centroids_of_nodes[nodes_of_edges]
     edges_centroids = np.mean(vertices_of_edges, axis=1)
@@ -204,7 +204,7 @@ def create_unitary_normal_edges_xy_plane(nodes_of_edges, centroids_of_nodes, fac
     
     faces_direction_vector = faces_centroids[faces_adj_by_edges[:, 1]] - faces_centroids[faces_adj_by_edges[:, 0]]
     
-    boundary_edges = faces_adj_by_edges[:,1] == -1
+    boundary_edges = bool_boundary_edges
     
     faces_direction_vector[boundary_edges] = edges_centroids[boundary_edges] - faces_centroids[faces_adj_by_edges[boundary_edges, 0]]
     
@@ -230,11 +230,10 @@ def distance_from_point_to_line(point, line_point_1, line_point_2):
     
     return distance
 
-def create_face_to_edge_distances(faces_centroids, faces_adj_by_edges, nodes_of_edges, edges, nodes_centroids):
+def create_face_to_edge_distances(faces_centroids, faces_adj_by_edges, nodes_of_edges, edges, nodes_centroids, bool_boundary_edges):
     
     face_to_edge_distance = np.zeros(faces_adj_by_edges.shape)
     
-    bool_boundary_edges = faces_adj_by_edges[:, 1] == -1
     bool_internal_edges = ~bool_boundary_edges
     internal_edges = edges[bool_internal_edges]
     

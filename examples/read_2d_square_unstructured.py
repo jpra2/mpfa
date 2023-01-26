@@ -27,7 +27,7 @@ mesh_properties.insert_data(
 
 calculate_face_properties.correction_faces_vertices_order(mesh_properties.unitary_normal_faces, mesh_properties.nodes_of_faces, np.array([0, 0, 1]))
 
-edges_dim, unitary_normal_edges = calculate_face_properties.create_unitary_normal_edges_xy_plane(mesh_properties.nodes_of_edges, mesh_properties.nodes_centroids, mesh_properties.faces_adj_by_edges, mesh_properties.faces_centroids)
+edges_dim, unitary_normal_edges = calculate_face_properties.create_unitary_normal_edges_xy_plane(mesh_properties.nodes_of_edges, mesh_properties.nodes_centroids, mesh_properties.faces_adj_by_edges, mesh_properties.faces_centroids, mesh_properties.bool_boundary_edges)
 
 mesh_properties.insert_data(
     {
@@ -41,7 +41,8 @@ h_distance = calculate_face_properties.create_face_to_edge_distances(
     faces_adj_by_edges=mesh_properties.faces_adj_by_edges,
     nodes_of_edges=mesh_properties.nodes_of_edges,
     edges=mesh_properties.edges,
-    nodes_centroids=mesh_properties.nodes_centroids
+    nodes_centroids=mesh_properties.nodes_centroids,
+    bool_boundary_edges=mesh_properties.bool_boundary_edges
 )
 
 calculate_face_properties.ordenate_nodes_of_edges(
@@ -71,6 +72,35 @@ phis_and_thetas = mpfaprepropcess.create_phis_and_thetas(
     mesh_properties.faces_adj_by_nodes,
     mesh_properties.edges_adj_by_nodes
 )
+
+tk_ok_vector, tk_ok_index = mpfaprepropcess.create_Tk_Ok_vector(
+    mesh_properties.faces_adj_by_edges,
+    tk_points,
+    mesh_properties.faces_centroids,
+    mesh_properties.bool_boundary_edges,
+    mesh_properties.edges
+)
+
+permeability = np.zeros((len(mesh_properties.faces), 2, 2))
+permeability[:,0,0] = 1
+permeability[:,1,1] = 2
+
+kn_kt_tk_ok = mpfaprepropcess.create_kn_and_kt_Tk_Ok(
+    tk_ok_vector,
+    tk_ok_index,
+    permeability
+)
+
+q0_tk_vector, q0_tk_index = mpfaprepropcess.create_q0_tk_vector(mesh_properties.edges_adj_by_nodes, tk_points, mesh_properties.nodes_centroids)
+
+neta_kn_kt_q0_tk =  mpfaprepropcess.create_neta_kn_and_kt_Q0_Tk(q0_tk_vector, q0_tk_index, mesh_properties.faces_adj_by_edges, permeability, mesh_properties.bool_boundary_edges, mesh_properties.edges, h_distance)
+
+
+
+
+
+
+
 
 import pdb; pdb.set_trace()
 
