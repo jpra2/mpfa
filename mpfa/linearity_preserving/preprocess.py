@@ -100,7 +100,7 @@ class MpfaLinearityPreservingPreprocess2D:
         centroids_of_faces_adj = faces_centroids[faces_adj_by_edges]
         Tk_Ok = centroids_of_faces_adj - tk_points.reshape((tk_points.shape[0], 1, tk_points.shape[1]))
         
-        dtype_struc = [('edge_index', np.uint64), ('face_index', np.uint64)]
+        dtype_struc = [('edge_index', np.uint64), ('face_index', np.uint64), ('tk_ok_vector', np.float64, (3,))]
         bool_internal_edges = ~bool_boundary_edges
         
         n_boundary_edges = bool_boundary_edges.sum()
@@ -122,7 +122,9 @@ class MpfaLinearityPreservingPreprocess2D:
         Tk_Ok_index['face_index'][n_boundary_edges + n_internal_edges:] = faces_adj_by_edges[bool_internal_edges, 1]
         Tk_Ok_vector[n_boundary_edges+n_internal_edges:] = Tk_Ok[bool_internal_edges, 1]
         
-        return Tk_Ok_vector, Tk_Ok_index
+        Tk_Ok_index['tk_ok_vector'][:] = Tk_Ok_vector
+        
+        return Tk_Ok_index
 
     def create_kn_and_kt_Tk_Ok(self, Tk_Ok, Tk_Ok_index, permeability):
         
@@ -170,12 +172,13 @@ class MpfaLinearityPreservingPreprocess2D:
         edge_index = np.concatenate(edge_index)
         q0_tk_vector = np.concatenate(q0_tk_vector)
         
-        dtype_struc = [('node_index', np.uint64), ('edge_index', np.uint64)]
+        dtype_struc = [('node_index', np.uint64), ('edge_index', np.uint64), ('q0_tk_vector', np.float64, (3,))]
         q0_tk_index = np.zeros(len(node_index), dtype=dtype_struc)
         q0_tk_index['edge_index'] = edge_index
         q0_tk_index['node_index'] = node_index
+        q0_tk_index['q0_tk_vector'] = q0_tk_vector
         
-        return q0_tk_vector, q0_tk_index
+        return q0_tk_index
 
     def create_neta_kn_and_kt_Q0_Tk(self, q0_tk_vector, q0_tk_index, faces_adj_by_edges, permeability, bool_boundary_edges, edges, h_distance):
         

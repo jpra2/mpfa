@@ -296,7 +296,6 @@ def ordenate_faces_of_nodes_xy_plane(faces_centroids, faces_adj_by_nodes, nodes_
             centroid_faces[:] = centroid_faces[ordenate_index]
             faces2 = faces[ordenate_index]
             new_index = sort_vertices_by_zdirection_xy_plane_by_centroid(centroid_node, centroid_faces)
-            centroid_faces[:] = centroid_faces[new_index]
         
         elif len(faces) > 2:    
             ordenate_index = sort_radial_sweep(centroid_faces, np.arange(len(centroid_faces)))
