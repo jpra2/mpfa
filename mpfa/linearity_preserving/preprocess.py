@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from scipy.sparse import lil_matrix
 
 class MpfaLinearityPreservingPreprocess2D:
     
@@ -11,7 +12,7 @@ class MpfaLinearityPreservingPreprocess2D:
         
         return Tk
     
-    def create_phis_and_thetas(self, nodes, edges, faces, nodes_centroids, faces_centroids, nodes_of_edges, tk_points, edges_of_faces, faces_adj_by_nodes, edges_adj_by_nodes):
+    def create_phis_and_thetas(self, nodes, edges, faces, nodes_centroids, faces_centroids, nodes_of_edges, tk_points, edges_of_faces, faces_adj_by_nodes, edges_adj_by_nodes, faces_adj_by_edges):
         """create phis and thetas
 
         Args:
@@ -28,70 +29,55 @@ class MpfaLinearityPreservingPreprocess2D:
             _type_: dict where key = tuple(node, face), value = phi1, phi2, theta1, theta2
         """
         
-        index_tuples = []
-        phis_and_thetas = []
-        edges_tuples = []
+        node_index = []
+        edge_index = []
+        face_index = []
+        phis = []
+        thetas = []
         
-        dtype_phis_and_thetas = [('phi1', float), ('phi2', float), ('theta1', float), ('theta2', float), ('edge1', np.uint64), ('edge2', np.uint64), ('node_index', np.uint64), ('face_index', np.uint64)]
+        dtype_phis_and_thetas = [('phi', float), ('theta', float), ('node_index', np.uint64), ('edge_index', np.uint64), ('face_index', np.uint64)]
         
         for node in nodes:
-            faces_around_node = faces_adj_by_nodes[node]
             edges_around_node = edges_adj_by_nodes[node]
             node_centroid = nodes_centroids[node]
             
-            for face in faces_around_node:
-                index_tuples.append((node, face))
-                faces_edges = edges_of_faces[face]
-                intersect_edges = np.intersect1d(edges_around_node, faces_edges)
-                position1 = np.argwhere(edges_around_node == intersect_edges[0])
-                position2 = np.argwhere(edges_around_node == intersect_edges[1])
-                if position2 > position1:
-                    pass
-                else:
-                    intersect_edges[:] = np.flip(intersect_edges)
+            for edge in edges_around_node:
+                
+                faces_adj = faces_adj_by_edges[edge][faces_adj_by_edges[edge] != -1]
+                tk_edge = tk_points[edge]
+                
+                for face in faces_adj:
+                    face_centroid = faces_centroids[face]
                     
-                
-                tk_edges = tk_points[intersect_edges]
-                face_centroid = faces_centroids[face]
-                
-                q0ok = np.linalg.norm(face_centroid - node_centroid)
-                
-                q0tk = np.linalg.norm(tk_edges[0] - node_centroid)
-                oktk = np.linalg.norm(face_centroid - tk_edges[0])
-                
-                cos_theta1 = (oktk**2 - (q0ok**2 + q0tk**2))/(-2*q0ok*q0tk)
-                cos_phi1 =   (q0tk**2 - (q0ok**2 + oktk**2))/(-2*q0ok*oktk)
-                
-                q0tk1 = np.linalg.norm(tk_edges[1] - node_centroid)
-                oktk1 = np.linalg.norm(face_centroid - tk_edges[1])
-                
-                cos_theta2 = (oktk1**2 - (q0ok**2 + q0tk1**2))/(-2*q0ok*q0tk1)
-                cos_phi2 =   (q0tk1**2 - (q0ok**2 + oktk1**2))/(-2*q0ok*oktk1)
-                
-                theta1 = np.arccos(cos_theta1)
-                phi1 = np.arccos(cos_phi1)
-                theta2 = np.arccos(cos_theta2)
-                phi2 = np.arccos(cos_phi2)
-                
-                resp = np.array([phi1, phi2, theta1, theta2])
-                
-                edges_tuples.append(intersect_edges)
-                phis_and_thetas.append(resp)
+                    q0ok = np.linalg.norm(face_centroid - node_centroid)
+                    q0tk = np.linalg.norm(tk_edge - node_centroid)
+                    oktk = np.linalg.norm(face_centroid - tk_edge)
+                    
+                    cos_theta = (oktk**2 - (q0ok**2 + q0tk**2))/(-2*q0ok*q0tk)
+                    cos_phi = (q0tk**2 - (q0ok**2 + oktk**2))/(-2*q0ok*oktk)
+                    
+                    theta = np.arccos(cos_theta)
+                    phi = np.arccos(cos_phi)
+                    
+                    node_index.append(node)
+                    edge_index.append(edge)
+                    face_index.append(face)
+                    thetas.append(theta)
+                    phis.append(phi)
         
-        phis_and_thetas = np.array(phis_and_thetas)
-        edges_tuples = np.array(edges_tuples)
-        index_tuples = np.array(index_tuples)
+        phis = np.array(phis)
+        thetas = np.array(thetas)
+        node_index = np.array(node_index)
+        edge_index = np.array(edge_index)
+        face_index = np.array(face_index)
         
-        array_structured = np.zeros(len(phis_and_thetas), dtype=dtype_phis_and_thetas)
+        array_structured = np.zeros(len(phis), dtype=dtype_phis_and_thetas)
         
-        array_structured['phi1'] = phis_and_thetas[:, 0]
-        array_structured['phi2'] = phis_and_thetas[:, 1]
-        array_structured['theta1'] = phis_and_thetas[:, 2]
-        array_structured['theta2'] = phis_and_thetas[:, 3]
-        array_structured['edge1'] = edges_tuples[:, 0]
-        array_structured['edge2'] = edges_tuples[:, 1]
-        array_structured['node_index'] = index_tuples[:, 0]
-        array_structured['face_index'] = index_tuples[:, 1]
+        array_structured['phi'] = phis
+        array_structured['theta'] = thetas
+        array_structured['node_index'] = node_index
+        array_structured['face_index'] = face_index
+        array_structured['edge_index'] = edge_index
         
         return array_structured
     
@@ -261,6 +247,83 @@ class MpfaLinearityPreservingPreprocess2D:
         
         return kn_kt_resp
         
+    def create_lambda_k_internal_nodes(self, kn_kt_tk_ok, kn_kt_q0_tk, phis_and_thethas, edges_of_nodes, nodes_adj_by_nodes, faces_adj_by_nodes, bool_boundary_nodes, nodes, edges_of_faces, faces_adj_by_edges):
         
+        bool_internal_nodes = ~bool_boundary_nodes
+        internal_nodes = nodes[bool_internal_nodes]
+        
+        K_barra_alpha = kn_kt_tk_ok
+        K_alpha = kn_kt_q0_tk
+        
+        node_index = []
+        face_index = []
+        lambda_value = []
+        
+        dtype_struc = [('node_index', np.uint64), ('face_index', np.uint64), ('lambda_value', np.float64)]
+        
+        for node in internal_nodes:
+            edges_node = edges_of_nodes[node]
+            faces_node = faces_adj_by_nodes[node]
+            
+            for face in faces_node:
+                edges_face_node = np.intersect1d(edges_of_faces[face], edges_node)
+                faces_adj_of_face_by_edges = faces_adj_by_edges[edges_face_node][faces_adj_by_edges[edges_face_node] != face]
+                
+                for edge, face_adj in zip(edges_face_node, faces_adj_of_face_by_edges):
+                    
+                    K_barra_n_face_edge, K_barra_t_face_edge  = self.get_knkt_by_edge_and_face_index(K_barra_alpha, edge, face)
+                    
+                    Kn_node_face_edge, Kt_node_face_edge, neta_node_face_edge = self.get_neta_kn_kt_by_node_face_and_edge_index(K_alpha, node, edge, face)
+                    
+                    phi_node_face_edge, theta_node_face_edge = 
+                    
+                    K_barra_n_faceadj_edge, K_barra_t_faceadj_edge  = self.get_knkt_by_edge_and_face_index(K_barra_alpha, edge, face_adj)
+                    
+                    Kn_node_faceadj_edge, Kt_node_faceadj_edge, neta_node_face_edge = self.get_neta_kn_kt_by_node_face_and_edge_index(K_alpha, node, edge, face_adj)
+                    
+                    
+                    
+                    
+                    
+                    import pdb; pdb.set_trace()
+                    
+                    
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                import pdb; pdb.set_trace()
+            
+            
+            
+        
+        import pdb; pdb.set_trace()
+        
+    def get_knkt_by_edge_and_face_index(self, kn_kt, edge_index, face_index):
+        
+            test = (kn_kt['edge_index'] == edge_index) & (kn_kt['face_index'] == face_index)
+            
+            kn, kt = kn_kt[['kn_tk_ok', 'kt_tk_ok']][test][0]
+            
+            return kn, kt
+    
+    def get_neta_kn_kt_by_node_face_and_edge_index(self, kn_kt, node_index, edge_index, face_index):
+        
+        test = (kn_kt['node_index'] == node_index) & (kn_kt['face_index'] == face_index) & (kn_kt['edge_index'] == edge_index)
+        
+        kn, kt, neta = kn_kt[['kn_q0_tk', 'kt_q0_tk', 'neta']][test][0]
+        
+        return kn, kt, neta
+        
+    def get_phi_and_theta   
+         
             
         

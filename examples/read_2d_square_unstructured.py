@@ -60,7 +60,7 @@ tk_points = mpfaprepropcess.create_Tk_point(
     mesh_properties.nodes_centroids[mesh_properties.nodes_of_edges]
 )
 
-phis_and_thetas = mpfaprepropcess.create_phis_and_thetas(
+phis_and_thethas = mpfaprepropcess.create_phis_and_thetas(
     mesh_properties.nodes,
     mesh_properties.edges,
     mesh_properties.faces,
@@ -70,7 +70,8 @@ phis_and_thetas = mpfaprepropcess.create_phis_and_thetas(
     tk_points,
     mesh_properties.edges_of_faces,
     mesh_properties.faces_adj_by_nodes,
-    mesh_properties.edges_adj_by_nodes
+    mesh_properties.edges_adj_by_nodes,
+    mesh_properties.faces_adj_by_edges
 )
 
 tk_ok = mpfaprepropcess.create_Tk_Ok_vector(
@@ -94,6 +95,19 @@ kn_kt_tk_ok = mpfaprepropcess.create_kn_and_kt_Tk_Ok(
 q0_tk = mpfaprepropcess.create_q0_tk_vector(mesh_properties.edges_adj_by_nodes, tk_points, mesh_properties.nodes_centroids)
 
 neta_kn_kt_q0_tk =  mpfaprepropcess.create_neta_kn_and_kt_Q0_Tk(q0_tk['q0_tk_vector'], q0_tk, mesh_properties.faces_adj_by_edges, permeability, mesh_properties.bool_boundary_edges, mesh_properties.edges, h_distance)
+
+mpfaprepropcess.create_lambda_k_internal_nodes(
+    kn_kt_tk_ok, 
+    neta_kn_kt_q0_tk, 
+    phis_and_thethas, 
+    mesh_properties.edges_adj_by_nodes, 
+    mesh_properties.nodes_adj_by_nodes, 
+    mesh_properties.faces_adj_by_nodes, 
+    mesh_properties.bool_boundary_nodes, 
+    mesh_properties.nodes,
+    mesh_properties.edges_of_faces,
+    mesh_properties.faces_adj_by_edges
+)
 
 
 
