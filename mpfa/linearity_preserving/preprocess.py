@@ -247,7 +247,7 @@ class MpfaLinearityPreservingPreprocess2D:
         
         return kn_kt_resp
         
-    def create_lambda_k_internal_nodes(self, kn_kt_tk_ok, kn_kt_q0_tk, phis_and_thethas, edges_of_nodes, nodes_adj_by_nodes, faces_adj_by_nodes, bool_boundary_nodes, nodes, edges_of_faces, faces_adj_by_edges):
+    def create_lambda_k_internal_nodes(self, kn_kt_tk_ok, kn_kt_q0_tk, phis_and_thethas, edges_of_nodes, faces_adj_by_nodes, bool_boundary_nodes, nodes, faces_adj_by_edges, edges):
         
         bool_internal_nodes = ~bool_boundary_nodes
         internal_nodes = nodes[bool_internal_nodes]
@@ -262,50 +262,135 @@ class MpfaLinearityPreservingPreprocess2D:
         dtype_struc = [('node_index', np.uint64), ('face_index', np.uint64), ('lambda_value', np.float64)]
         
         for node in internal_nodes:
-            edges_node = edges_of_nodes[node]
             faces_node = faces_adj_by_nodes[node]
             
             for face in faces_node:
-                edges_face_node = np.intersect1d(edges_of_faces[face], edges_node)
-                faces_adj_of_face_by_edges = faces_adj_by_edges[edges_face_node][faces_adj_by_edges[edges_face_node] != face]
+                # edges_face_node = np.intersect1d(edges_of_faces[face], edges_node)
                 
-                for edge, face_adj in zip(edges_face_node, faces_adj_of_face_by_edges):
-                    
-                    K_barra_n_face_edge, K_barra_t_face_edge  = self.get_knkt_by_edge_and_face_index(K_barra_alpha, edge, face)
-                    
-                    Kn_node_face_edge, Kt_node_face_edge, neta_node_face_edge = self.get_neta_kn_kt_by_node_face_and_edge_index(K_alpha, node, edge, face)
-                    
-                    phi_node_face_edge, theta_node_face_edge = 
-                    
-                    K_barra_n_faceadj_edge, K_barra_t_faceadj_edge  = self.get_knkt_by_edge_and_face_index(K_barra_alpha, edge, face_adj)
-                    
-                    Kn_node_faceadj_edge, Kt_node_faceadj_edge, neta_node_face_edge = self.get_neta_kn_kt_by_node_face_and_edge_index(K_alpha, node, edge, face_adj)
-                    
-                    
-                    
-                    
-                    
-                    import pdb; pdb.set_trace()
-                    
-                    
+                # faces_adj_of_face_by_edges = faces_adj_by_edges[edges_face_node][faces_adj_by_edges[edges_face_node] != face]               
                 
                 
+                face_position = np.argwhere(faces_node == face)[0][0]
+                faces_adj_of_face_by_edges = faces_node[[face_position-1, face_position+1]]
                 
+                test1 = ((faces_adj_by_edges[:, 0] == face) & (faces_adj_by_edges[:, 1] == faces_adj_of_face_by_edges[0])) | ((faces_adj_by_edges[:, 1] == face) & (faces_adj_by_edges[:, 0] == faces_adj_of_face_by_edges[0]))
                 
+                test2 = ((faces_adj_by_edges[:, 0] == face) & (faces_adj_by_edges[:, 1] == faces_adj_of_face_by_edges[1])) | ((faces_adj_by_edges[:, 1] == face) & (faces_adj_by_edges[:, 0] == faces_adj_of_face_by_edges[1]))
                 
+                test3 = test1 | test2
+                edges_face_node = edges[test3]
                 
+                lambda_face = self.define_lambda(K_barra_alpha, K_alpha, node, face, edges_face_node, faces_adj_of_face_by_edges, phis_and_thethas)
                 
-                
-                
-                
-                
-                
-                import pdb; pdb.set_trace()
-            
-            
-            
+                node_index.append(node)
+                face_index.append(face)
+                lambda_value.append(lambda_face)
         
-        import pdb; pdb.set_trace()
+        node_index = np.array(node_index)
+        face_index = np.array(face_index)
+        lambda_value = np.array(lambda_value)
+        
+        lambdas = np.zeros(len(node_index), dtype=dtype_struc)
+        
+        lambdas['node_index'] = node_index
+        lambdas['face_index'] = face_index
+        lambdas['lambda_value'] = lambda_value
+        
+        return lambdas
+    
+    def define_lambda(self, K_barra_alpha, K_alpha, node, face, edges_face_node, faces_adj_of_face_by_edges, phis_and_thethas):
+        
+        #######################################
+        ### node_face_edge0
+        
+        K_barra_n_face_edge0, K_barra_t_face_edge0  = self.get_knkt_by_edge_and_face_index(K_barra_alpha, edges_face_node[0], face)
+            
+        Kn_node_face_edge0, Kt_node_face_edge0, neta_node_face_edge0 = self.get_neta_kn_kt_by_node_face_and_edge_index(K_alpha, node, edges_face_node[0], face)
+        
+        phi_node_face_edge0, theta_node_face_edge0 = self.get_phi_and_theta(phis_and_thethas, node, edges_face_node[0], face)
+        
+        ###################
+        ### node_face_edge1
+        
+        K_barra_n_face_edge1, K_barra_t_face_edge1  = self.get_knkt_by_edge_and_face_index(K_barra_alpha, edges_face_node[1], face)
+            
+        Kn_node_face_edge1, Kt_node_face_edge1, neta_node_face_edge1 = self.get_neta_kn_kt_by_node_face_and_edge_index(K_alpha, node, edges_face_node[1], face)
+        
+        phi_node_face_edge1, theta_node_face_edge1 = self.get_phi_and_theta(phis_and_thethas, node, edges_face_node[1], face)
+        
+        ########################################
+        
+        ########################################
+        ### node_face_adj0_edge0
+        
+        K_barra_n_faceadj0_edge0, K_barra_t_faceadj0_edge0  = self.get_knkt_by_edge_and_face_index(K_barra_alpha, edges_face_node[0], face)
+            
+        Kn_node_faceadj0_edge0, Kt_node_faceadj0_edge0, neta_node_faceadj0_edge0 = self.get_neta_kn_kt_by_node_face_and_edge_index(K_alpha, node, edges_face_node[0], faces_adj_of_face_by_edges[0])
+        
+        phi_node_faceadj0_edge0, theta_node_faceadj0_edge0 = self.get_phi_and_theta(phis_and_thethas, node, edges_face_node[0], faces_adj_of_face_by_edges[0])
+        
+        ########################################
+        ## node_face_adj1_edge1
+        
+        K_barra_n_faceadj1_edge1, K_barra_t_faceadj1_edge1  = self.get_knkt_by_edge_and_face_index(K_barra_alpha, edges_face_node[1], faces_adj_of_face_by_edges[1])
+            
+        Kn_node_faceadj1_edge1, Kt_node_faceadj1_edge1, neta_node_faceadj1_edge1 = self.get_neta_kn_kt_by_node_face_and_edge_index(K_alpha, node, edges_face_node[1], faces_adj_of_face_by_edges[1])
+        
+        phi_node_faceadj1_edge1, theta_node_faceadj1_edge1 = self.get_phi_and_theta(phis_and_thethas, node, edges_face_node[1], faces_adj_of_face_by_edges[1])
+        
+        phi_k = self.define_phik(
+            K_barra_n_faceadj0_edge0,
+            phi_node_faceadj0_edge0,
+            K_barra_n_face_edge0,
+            phi_node_face_edge0,
+            K_barra_t_faceadj0_edge0,
+            K_barra_t_face_edge0,
+            Kn_node_faceadj0_edge0,
+            theta_node_faceadj0_edge0,
+            Kn_node_face_edge0,
+            theta_node_face_edge0,
+            Kt_node_faceadj0_edge0,
+            Kt_node_face_edge0           
+        )
+        
+        phi_k_plus1 = self.define_phik(
+            K_barra_n_face_edge1,
+            phi_node_face_edge1,
+            K_barra_n_faceadj1_edge1,
+            phi_node_faceadj1_edge1,
+            K_barra_t_face_edge1,
+            K_barra_t_faceadj1_edge1,
+            Kn_node_face_edge1,
+            theta_node_face_edge1,
+            Kn_node_faceadj1_edge1,
+            theta_node_faceadj1_edge1,
+            Kt_node_face_edge1,
+            Kt_node_faceadj1_edge1
+        )
+        
+        term1 = Kn_node_face_edge0*neta_node_face_edge0*phi_k
+        term2 = Kn_node_face_edge1*neta_node_face_edge1*phi_k_plus1
+        term3 = K_barra_n_face_edge0*(1/np.tan(phi_node_face_edge0 + theta_node_face_edge0)) + K_barra_n_face_edge1*(1/np.tan(phi_node_face_edge1 + theta_node_face_edge1))
+        term4 = K_barra_t_face_edge0 - K_barra_t_face_edge1
+        
+        lambda_k = term1 + term2 + term3 + term4
+        
+        return lambda_k
+    
+    def define_phik(self, K_barra_n2_facekminus1, phi2_facekminus1, K_barra_n1_facek, phi1_facek, K_barra_t2_facekminus1, K_barra_t1_facek, K_n2_facekminus1, theta2_facekminus1, K_n1_facek, theta1_facek, K_t2_facekminus1, K_t1_facek):
+        
+        cot_phi2_facekminus1 = 1/np.tan(phi2_facekminus1)
+        cot_phi1_facek = 1/np.tan(phi1_facek)
+        cot_theta2_facekminus1 = 1/np.tan(theta2_facekminus1)
+        cot_theta1_facek = 1/np.tan(theta1_facek)
+        
+        numer = K_barra_n2_facekminus1*cot_phi2_facekminus1 + K_barra_n1_facek*cot_phi1_facek + K_barra_t2_facekminus1 - K_barra_t1_facek
+        
+        den = K_n2_facekminus1*cot_theta2_facekminus1 + K_n1_facek*cot_theta1_facek - K_t2_facekminus1 + K_t1_facek
+        
+        phi_k = numer/den
+        
+        return phi_k
         
     def get_knkt_by_edge_and_face_index(self, kn_kt, edge_index, face_index):
         
@@ -323,7 +408,10 @@ class MpfaLinearityPreservingPreprocess2D:
         
         return kn, kt, neta
         
-    def get_phi_and_theta   
-         
-            
+    def get_phi_and_theta(self, phis_and_thetas, node_index, edge_index, face_index):
+        
+        test = (phis_and_thetas['node_index'] == node_index) & (phis_and_thetas['face_index'] == face_index) & (phis_and_thetas['edge_index'] == edge_index)
+        
+        phi, theta = phis_and_thetas[['phi', 'theta']][test][0]
+        return phi, theta
         
