@@ -128,6 +128,8 @@ class MpfaLinearityPreservingPreprocess2D:
 
         kn = (np.tensordot(intermediate, normal_tk_ok, axes=((1), (1)))[d1,d1])/(norm_normal_tk_ok)
         
+        import pdb; pdb.set_trace()
+        
         kt = (np.tensordot(intermediate, Tk_Ok[:,0:2], axes=((1), (1)))[d1,d1])/(norm_normal_tk_ok)
         
         dtype_struc = [('edge_index', np.uint64), ('face_index', np.uint64), ('kn_tk_ok', np.float64), ('kt_tk_ok', np.float64)]
@@ -247,7 +249,7 @@ class MpfaLinearityPreservingPreprocess2D:
         
         return kn_kt_resp
         
-    def create_lambda_k_internal_nodes(self, kn_kt_tk_ok, kn_kt_q0_tk, phis_and_thethas, edges_of_nodes, faces_adj_by_nodes, bool_boundary_nodes, nodes, faces_adj_by_edges, edges):
+    def create_lambda_k_internal_nodes(self, kn_kt_tk_ok, kn_kt_q0_tk, phis_and_thethas, edges_of_nodes, faces_adj_by_nodes, bool_boundary_nodes, nodes, faces_adj_by_edges, edges, bool_boundary_edges, edges_of_faces):
         
         bool_internal_nodes = ~bool_boundary_nodes
         internal_nodes = nodes[bool_internal_nodes]
@@ -263,25 +265,21 @@ class MpfaLinearityPreservingPreprocess2D:
         
         for node in internal_nodes:
             faces_node = faces_adj_by_nodes[node]
+            edges_node = edges_of_nodes[node]
+            n_edges_node = len(edges_node)
             
             for face in faces_node:
-                # edges_face_node = np.intersect1d(edges_of_faces[face], edges_node)
                 
-                # faces_adj_of_face_by_edges = faces_adj_by_edges[edges_face_node][faces_adj_by_edges[edges_face_node] != face]               
+                edges_face_node = self.test_edges_order(
+                    np.intersect1d(edges_of_faces[face], edges_node),
+                    edges_node,
+                    n_edges_node
+                )
                 
-                
-                face_position = np.argwhere(faces_node == face)[0][0]
-                faces_adj_of_face_by_edges = faces_node[[face_position-1, face_position+1]]
-                
-                test1 = ((faces_adj_by_edges[:, 0] == face) & (faces_adj_by_edges[:, 1] == faces_adj_of_face_by_edges[0])) | ((faces_adj_by_edges[:, 1] == face) & (faces_adj_by_edges[:, 0] == faces_adj_of_face_by_edges[0]))
-                
-                test2 = ((faces_adj_by_edges[:, 0] == face) & (faces_adj_by_edges[:, 1] == faces_adj_of_face_by_edges[1])) | ((faces_adj_by_edges[:, 1] == face) & (faces_adj_by_edges[:, 0] == faces_adj_of_face_by_edges[1]))
-                
-                test3 = test1 | test2
-                edges_face_node = edges[test3]
-                
+                faces_adj_of_face_by_edges = faces_adj_by_edges[edges_face_node][faces_adj_by_edges[edges_face_node] != face]
+
                 lambda_face = self.define_lambda(K_barra_alpha, K_alpha, node, face, edges_face_node, faces_adj_of_face_by_edges, phis_and_thethas)
-                
+                    
                 node_index.append(node)
                 face_index.append(face)
                 lambda_value.append(lambda_face)
@@ -296,6 +294,8 @@ class MpfaLinearityPreservingPreprocess2D:
         lambdas['face_index'] = face_index
         lambdas['lambda_value'] = lambda_value
         
+        import pdb; pdb.set_trace()
+        
         return lambdas
     
     def define_lambda(self, K_barra_alpha, K_alpha, node, face, edges_face_node, faces_adj_of_face_by_edges, phis_and_thethas):
@@ -304,16 +304,15 @@ class MpfaLinearityPreservingPreprocess2D:
         ### node_face_edge0
         
         K_barra_n_face_edge0, K_barra_t_face_edge0  = self.get_knkt_by_edge_and_face_index(K_barra_alpha, edges_face_node[0], face)
-            
+        
         Kn_node_face_edge0, Kt_node_face_edge0, neta_node_face_edge0 = self.get_neta_kn_kt_by_node_face_and_edge_index(K_alpha, node, edges_face_node[0], face)
         
         phi_node_face_edge0, theta_node_face_edge0 = self.get_phi_and_theta(phis_and_thethas, node, edges_face_node[0], face)
         
         ###################
         ### node_face_edge1
-        
         K_barra_n_face_edge1, K_barra_t_face_edge1  = self.get_knkt_by_edge_and_face_index(K_barra_alpha, edges_face_node[1], face)
-            
+        
         Kn_node_face_edge1, Kt_node_face_edge1, neta_node_face_edge1 = self.get_neta_kn_kt_by_node_face_and_edge_index(K_alpha, node, edges_face_node[1], face)
         
         phi_node_face_edge1, theta_node_face_edge1 = self.get_phi_and_theta(phis_and_thethas, node, edges_face_node[1], face)
@@ -324,7 +323,7 @@ class MpfaLinearityPreservingPreprocess2D:
         ### node_face_adj0_edge0
         
         K_barra_n_faceadj0_edge0, K_barra_t_faceadj0_edge0  = self.get_knkt_by_edge_and_face_index(K_barra_alpha, edges_face_node[0], face)
-            
+                    
         Kn_node_faceadj0_edge0, Kt_node_faceadj0_edge0, neta_node_faceadj0_edge0 = self.get_neta_kn_kt_by_node_face_and_edge_index(K_alpha, node, edges_face_node[0], faces_adj_of_face_by_edges[0])
         
         phi_node_faceadj0_edge0, theta_node_faceadj0_edge0 = self.get_phi_and_theta(phis_and_thethas, node, edges_face_node[0], faces_adj_of_face_by_edges[0])
@@ -337,6 +336,8 @@ class MpfaLinearityPreservingPreprocess2D:
         Kn_node_faceadj1_edge1, Kt_node_faceadj1_edge1, neta_node_faceadj1_edge1 = self.get_neta_kn_kt_by_node_face_and_edge_index(K_alpha, node, edges_face_node[1], faces_adj_of_face_by_edges[1])
         
         phi_node_faceadj1_edge1, theta_node_faceadj1_edge1 = self.get_phi_and_theta(phis_and_thethas, node, edges_face_node[1], faces_adj_of_face_by_edges[1])
+        
+        ################################
         
         phi_k = self.define_phik(
             K_barra_n_faceadj0_edge0,
@@ -370,19 +371,22 @@ class MpfaLinearityPreservingPreprocess2D:
         
         term1 = Kn_node_face_edge0*neta_node_face_edge0*phi_k
         term2 = Kn_node_face_edge1*neta_node_face_edge1*phi_k_plus1
-        term3 = K_barra_n_face_edge0*(1/np.tan(phi_node_face_edge0 + theta_node_face_edge0)) + K_barra_n_face_edge1*(1/np.tan(phi_node_face_edge1 + theta_node_face_edge1))
+        term3 = K_barra_n_face_edge0*self.get_cotangent_angle(phi_node_face_edge0 + theta_node_face_edge0) + K_barra_n_face_edge1*self.get_cotangent_angle(phi_node_face_edge1 + theta_node_face_edge1)
         term4 = K_barra_t_face_edge0 - K_barra_t_face_edge1
         
         lambda_k = term1 + term2 + term3 + term4
+        
+        if lambda_k < 0:
+            import pdb; pdb.set_trace()
         
         return lambda_k
     
     def define_phik(self, K_barra_n2_facekminus1, phi2_facekminus1, K_barra_n1_facek, phi1_facek, K_barra_t2_facekminus1, K_barra_t1_facek, K_n2_facekminus1, theta2_facekminus1, K_n1_facek, theta1_facek, K_t2_facekminus1, K_t1_facek):
         
-        cot_phi2_facekminus1 = 1/np.tan(phi2_facekminus1)
-        cot_phi1_facek = 1/np.tan(phi1_facek)
-        cot_theta2_facekminus1 = 1/np.tan(theta2_facekminus1)
-        cot_theta1_facek = 1/np.tan(theta1_facek)
+        cot_phi2_facekminus1 = self.get_cotangent_angle(phi2_facekminus1)
+        cot_phi1_facek = self.get_cotangent_angle(phi1_facek)
+        cot_theta2_facekminus1 = self.get_cotangent_angle(theta2_facekminus1)
+        cot_theta1_facek = self.get_cotangent_angle(theta1_facek)
         
         numer = K_barra_n2_facekminus1*cot_phi2_facekminus1 + K_barra_n1_facek*cot_phi1_facek + K_barra_t2_facekminus1 - K_barra_t1_facek
         
@@ -394,13 +398,18 @@ class MpfaLinearityPreservingPreprocess2D:
         
     def get_knkt_by_edge_and_face_index(self, kn_kt, edge_index, face_index):
         
-            test = (kn_kt['edge_index'] == edge_index) & (kn_kt['face_index'] == face_index)
-            
-            kn, kt = kn_kt[['kn_tk_ok', 'kt_tk_ok']][test][0]
-            
-            return kn, kt
+        if self.test_face_in_boundary(face_index):
+            return 0, 0
+        
+        test = (kn_kt['edge_index'] == edge_index) & (kn_kt['face_index'] == face_index)
+        kn, kt = kn_kt[['kn_tk_ok', 'kt_tk_ok']][test][0]
+        
+        return kn, kt
     
     def get_neta_kn_kt_by_node_face_and_edge_index(self, kn_kt, node_index, edge_index, face_index):
+        
+        if self.test_face_in_boundary(face_index):
+            return 0, 0, 0
         
         test = (kn_kt['node_index'] == node_index) & (kn_kt['face_index'] == face_index) & (kn_kt['edge_index'] == edge_index)
         
@@ -410,8 +419,36 @@ class MpfaLinearityPreservingPreprocess2D:
         
     def get_phi_and_theta(self, phis_and_thetas, node_index, edge_index, face_index):
         
+        if self.test_face_in_boundary(face_index):
+            return 0, 0
+        
         test = (phis_and_thetas['node_index'] == node_index) & (phis_and_thetas['face_index'] == face_index) & (phis_and_thetas['edge_index'] == edge_index)
         
         phi, theta = phis_and_thetas[['phi', 'theta']][test][0]
         return phi, theta
+    
+    def test_edges_order(self, edges_face_node, edges_node, n_edges_node):
+        posedge0 = np.argwhere(edges_node == edges_face_node[0])[0][0]
+        posedge1 = np.argwhere(edges_node == edges_face_node[1])[0][0]
         
+        if posedge0 == n_edges_node-1 and posedge1 == 0:
+            pass
+        elif posedge1 == n_edges_node-1 and posedge0 == 0:
+            edges_face_node[:] = np.flip(edges_face_node)
+        elif posedge0 > posedge1:
+            edges_face_node[:] = np.flip(edges_face_node)
+        
+        return edges_face_node
+    
+    def test_face_in_boundary(self, face):
+        if face == -1:
+            return True
+    
+    def get_cotangent_angle(self, angle):
+        if angle == 0:
+            return 0
+        else:
+            return 1/np.tan(angle)
+        
+        
+                

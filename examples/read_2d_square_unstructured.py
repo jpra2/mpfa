@@ -105,7 +105,9 @@ mpfaprepropcess.create_lambda_k_internal_nodes(
     mesh_properties.bool_boundary_nodes, 
     mesh_properties.nodes,
     mesh_properties.faces_adj_by_edges,
-    mesh_properties.edges
+    mesh_properties.edges,
+    mesh_properties.bool_boundary_edges,
+    mesh_properties.edges_of_faces
 )
 
 
