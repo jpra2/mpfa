@@ -96,7 +96,7 @@ q0_tk = mpfaprepropcess.create_q0_tk_vector(mesh_properties.edges_adj_by_nodes, 
 
 neta_kn_kt_q0_tk =  mpfaprepropcess.create_neta_kn_and_kt_Q0_Tk(q0_tk['q0_tk_vector'], q0_tk, mesh_properties.faces_adj_by_edges, permeability, mesh_properties.bool_boundary_edges, mesh_properties.edges, h_distance)
 
-mpfaprepropcess.create_lambda_k_internal_nodes(
+lambda_values = mpfaprepropcess.create_weights(
     kn_kt_tk_ok, 
     neta_kn_kt_q0_tk, 
     phis_and_thethas, 
@@ -109,6 +109,8 @@ mpfaprepropcess.create_lambda_k_internal_nodes(
     mesh_properties.bool_boundary_edges,
     mesh_properties.edges_of_faces
 )
+
+
 
 
 

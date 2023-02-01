@@ -126,12 +126,10 @@ class MpfaLinearityPreservingPreprocess2D:
         
         intermediate = np.tensordot(normal_tk_ok, perm_faces, axes=((1), (1)))[d1,d1,:]
 
-        kn = (np.tensordot(intermediate, normal_tk_ok, axes=((1), (1)))[d1,d1])/(norm_normal_tk_ok)
+        kn = (np.tensordot(intermediate, normal_tk_ok, axes=((1), (1)))[d1,d1])/(np.power(norm_normal_tk_ok, 2))
         
-        import pdb; pdb.set_trace()
-        
-        kt = (np.tensordot(intermediate, Tk_Ok[:,0:2], axes=((1), (1)))[d1,d1])/(norm_normal_tk_ok)
-        
+        kt = (np.tensordot(intermediate, Tk_Ok[:,0:2], axes=((1), (1)))[d1,d1])/(np.power(norm_normal_tk_ok, 2))
+
         dtype_struc = [('edge_index', np.uint64), ('face_index', np.uint64), ('kn_tk_ok', np.float64), ('kt_tk_ok', np.float64)]
         
         resp = np.zeros(len(kn), dtype=dtype_struc)
@@ -204,8 +202,8 @@ class MpfaLinearityPreservingPreprocess2D:
                 hd = h_dist[i]             
                 perm_face = permeability[face]
                 intermediate = np.dot(normal_q0_tk_in, perm_face)
-                kn = np.dot(intermediate, normal_q0_tk_in)/(norm_normal_q0_tk_in)
-                kt = np.dot(intermediate, q0_tk[0:2])/(norm_normal_q0_tk_in)
+                kn = np.dot(intermediate, normal_q0_tk_in)/(np.power(norm_normal_q0_tk_in, 2))
+                kt = np.dot(intermediate, q0_tk[0:2])/(np.power(norm_normal_q0_tk_in, 2))
                 kn_resp.append(kn)
                 kt_resp.append(kt)
                 neta.append(norm_normal_q0_tk_in/hd)
@@ -224,8 +222,8 @@ class MpfaLinearityPreservingPreprocess2D:
             hd = h_distance[edge][0]             
             perm_face = permeability[face]
             intermediate = np.dot(normal_q0_tk_in, perm_face)
-            kn = np.dot(intermediate, normal_q0_tk_in)/(norm_normal_q0_tk_in)
-            kt = np.dot(intermediate, q0_tk[0:2])/(norm_normal_q0_tk_in)
+            kn = np.dot(intermediate, normal_q0_tk_in)/(np.power(norm_normal_q0_tk_in, 2))
+            kt = np.dot(intermediate, q0_tk[0:2])/(np.power(norm_normal_q0_tk_in, 2))
             kn_resp.append(kn)
             kt_resp.append(kt)
             neta.append(norm_normal_q0_tk_in/hd)
@@ -249,7 +247,7 @@ class MpfaLinearityPreservingPreprocess2D:
         
         return kn_kt_resp
         
-    def create_lambda_k_internal_nodes(self, kn_kt_tk_ok, kn_kt_q0_tk, phis_and_thethas, edges_of_nodes, faces_adj_by_nodes, bool_boundary_nodes, nodes, faces_adj_by_edges, edges, bool_boundary_edges, edges_of_faces):
+    def create_weights(self, kn_kt_tk_ok, kn_kt_q0_tk, phis_and_thethas, edges_of_nodes, faces_adj_by_nodes, bool_boundary_nodes, nodes, faces_adj_by_edges, edges, bool_boundary_edges, edges_of_faces):
         
         bool_internal_nodes = ~bool_boundary_nodes
         internal_nodes = nodes[bool_internal_nodes]
@@ -260,15 +258,17 @@ class MpfaLinearityPreservingPreprocess2D:
         node_index = []
         face_index = []
         lambda_value = []
+        weights = []
         
-        dtype_struc = [('node_index', np.uint64), ('face_index', np.uint64), ('lambda_value', np.float64)]
+        dtype_struc = [('node_index', np.uint64), ('face_index', np.uint64), ('lambda_value', np.float64), ('weight', np.float64)]
         
-        for node in internal_nodes:
+        for node in nodes:
             faces_node = faces_adj_by_nodes[node]
             edges_node = edges_of_nodes[node]
             n_edges_node = len(edges_node)
+            lambdas_node = np.zeros(len(faces_node))
             
-            for face in faces_node:
+            for i, face in enumerate(faces_node):
                 
                 edges_face_node = self.test_edges_order(
                     np.intersect1d(edges_of_faces[face], edges_node),
@@ -282,19 +282,23 @@ class MpfaLinearityPreservingPreprocess2D:
                     
                 node_index.append(node)
                 face_index.append(face)
-                lambda_value.append(lambda_face)
+                lambdas_node[i] = lambda_face
+            
+            lambda_value.append(lambdas_node)
+            weights.append(lambdas_node/lambdas_node.sum())
+            
         
         node_index = np.array(node_index)
         face_index = np.array(face_index)
-        lambda_value = np.array(lambda_value)
+        lambda_value = np.concatenate(lambda_value)
+        weights = np.concatenate(weights)
         
         lambdas = np.zeros(len(node_index), dtype=dtype_struc)
         
         lambdas['node_index'] = node_index
         lambdas['face_index'] = face_index
         lambdas['lambda_value'] = lambda_value
-        
-        import pdb; pdb.set_trace()
+        lambdas['weight'] = weights
         
         return lambdas
     
@@ -376,9 +380,6 @@ class MpfaLinearityPreservingPreprocess2D:
         
         lambda_k = term1 + term2 + term3 + term4
         
-        if lambda_k < 0:
-            import pdb; pdb.set_trace()
-        
         return lambda_k
     
     def define_phik(self, K_barra_n2_facekminus1, phi2_facekminus1, K_barra_n1_facek, phi1_facek, K_barra_t2_facekminus1, K_barra_t1_facek, K_n2_facekminus1, theta2_facekminus1, K_n1_facek, theta1_facek, K_t2_facekminus1, K_t1_facek):
@@ -450,5 +451,4 @@ class MpfaLinearityPreservingPreprocess2D:
         else:
             return 1/np.tan(angle)
         
-        
-                
+            
