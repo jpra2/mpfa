@@ -49,9 +49,14 @@ class MpfaLinearityPreservingPreprocess2D:
                 for face in faces_adj:
                     face_centroid = faces_centroids[face]
                     
-                    q0ok = np.linalg.norm(face_centroid - node_centroid)
-                    q0tk = np.linalg.norm(tk_edge - node_centroid)
-                    oktk = np.linalg.norm(face_centroid - tk_edge)
+                    q0ok, q0tk, oktk = np.linalg.norm(
+                        [
+                            face_centroid - node_centroid,
+                            tk_edge - node_centroid,
+                            face_centroid - tk_edge
+                        ],
+                        axis=1
+                    )
                     
                     cos_theta = (oktk**2 - (q0ok**2 + q0tk**2))/(-2*q0ok*q0tk)
                     cos_phi = (q0tk**2 - (q0ok**2 + oktk**2))/(-2*q0ok*oktk)
@@ -114,8 +119,7 @@ class MpfaLinearityPreservingPreprocess2D:
 
     def create_kn_and_kt_Tk_Ok(self, Tk_Ok, Tk_Ok_index, permeability):
         
-        R_matrix = np.array([[0, 1],
-                             [-1, 0]])
+        R_matrix = self.get_R_matrix_2D()
         
         normal_tk_ok = np.matmul(Tk_Ok[:,0:2], R_matrix)
         norm_normal_tk_ok = np.linalg.norm(normal_tk_ok, axis=1)
@@ -168,8 +172,7 @@ class MpfaLinearityPreservingPreprocess2D:
 
     def create_neta_kn_and_kt_Q0_Tk(self, q0_tk_vector, q0_tk_index, faces_adj_by_edges, permeability, bool_boundary_edges, edges, h_distance):
         
-        R_matrix = np.array([[0, 1],
-                             [-1, 0]])
+        R_matrix = self.get_R_matrix_2D()
         
         normal_q0_tk = np.matmul(q0_tk_vector[:,0:2], R_matrix)
         norm_normal_q0_tk = np.linalg.norm(normal_q0_tk, axis=1)
@@ -450,5 +453,102 @@ class MpfaLinearityPreservingPreprocess2D:
             return 0
         else:
             return 1/np.tan(angle)
+    
+    def get_R_matrix_2D(self, angle=np.pi/2):
         
-            
+        R_matrix = np.array([[np.cos(angle), np.sin(angle)],
+                             [-np.sin(angle), np.cos(angle)]])
+        
+        return R_matrix
+    
+    def create_edge_face_kn_kt(self, nodes_of_edges, nodes_centroids, faces_adj_by_edges, permeability, bool_boundary_edges):
+        
+        bool_internal_edges = ~bool_boundary_edges
+        
+        kn = np.zeros(faces_adj_by_edges.shape)
+        kt = kn.copy()
+        
+        R_matrix = self.get_R_matrix_2D()
+        
+        edges_direction = nodes_centroids[nodes_of_edges[:, 1]] - nodes_centroids[nodes_of_edges[:, 0]]
+        edges_direction = edges_direction[:, 0:2]
+        normal_edges_direction = np.matmul(edges_direction, R_matrix)
+        edges_dim = np.linalg.norm(edges_direction, axis=1)
+        
+        n_boundary_edges = bool_boundary_edges.sum()
+        n_internal_edges = bool_internal_edges.sum()
+        
+        #############################        
+        perm_faces = permeability[faces_adj_by_edges[bool_internal_edges, 0]]
+        
+        d1 = np.arange(n_internal_edges)
+        
+        intermediate = np.tensordot(normal_edges_direction[bool_internal_edges], perm_faces, axes=((1), (1)))[d1,d1,:]
+        
+        kn[bool_internal_edges, 0] = (np.tensordot(intermediate, normal_edges_direction[bool_internal_edges], axes=((1), (1)))[d1,d1])/(np.power(edges_dim[bool_internal_edges], 2))
+        
+        kt[bool_internal_edges, 0] = (np.tensordot(intermediate, edges_direction[bool_internal_edges], axes=((1), (1)))[d1,d1])/(np.power(edges_dim[bool_internal_edges], 2))
+        
+        ############################################
+        
+        ##########################################
+        perm_faces = permeability[faces_adj_by_edges[bool_boundary_edges, 0]]
+        
+        d1 = np.arange(n_boundary_edges)
+        
+        intermediate = np.tensordot(normal_edges_direction[bool_boundary_edges], perm_faces, axes=((1), (1)))[d1,d1,:]
+        
+        kn[bool_boundary_edges, 0] =  (np.tensordot(intermediate, normal_edges_direction[bool_boundary_edges], axes=((1), (1)))[d1,d1])/(np.power(edges_dim[bool_boundary_edges], 2))
+        
+        kt[bool_boundary_edges, 0] =(np.tensordot(intermediate, edges_direction[bool_boundary_edges], axes=((1), (1)))[d1,d1])/(np.power(edges_dim[bool_boundary_edges], 2))
+        ##############################################
+        
+        ##################################
+        edges_direction = -1*edges_direction
+        normal_edges_direction = np.matmul(edges_direction, R_matrix)
+        
+        perm_faces = permeability[faces_adj_by_edges[bool_internal_edges, 1]]
+        
+        d1 = np.arange(n_internal_edges)
+        
+        intermediate = np.tensordot(normal_edges_direction[bool_internal_edges], perm_faces, axes=((1), (1)))[d1,d1,:]
+        
+        kn[bool_internal_edges, 1] = (np.tensordot(intermediate, normal_edges_direction[bool_internal_edges], axes=((1), (1)))[d1,d1])/(np.power(edges_dim[bool_internal_edges], 2))
+        
+        kt[bool_internal_edges, 1] = (np.tensordot(intermediate, edges_direction[bool_internal_edges], axes=((1), (1)))[d1,d1])/(np.power(edges_dim[bool_internal_edges], 2))
+        
+        ##########################################       
+        return kn, kt
+    
+    def get_normal_term(self, kn_edge_face, h_distance, bool_boundary_edges):
+        
+        bool_internal_edges = ~bool_boundary_edges
+        
+        Kapa = np.zeros(len(h_distance))
+        Kapa[bool_internal_edges] = (kn_edge_face[bool_internal_edges, 0] * kn_edge_face[bool_internal_edges, 1])/(kn_edge_face[bool_internal_edges, 0]*h_distance[bool_internal_edges, 0] + kn_edge_face[bool_internal_edges, 1]*h_distance[bool_internal_edges, 1])
+        
+        Kapa[bool_boundary_edges] = np.nan
+        
+        return Kapa
+    
+    def get_tangent_term(self, nodes_of_edges, nodes_centroids, faces_adj_by_edges, faces_centroids, kn_edge_face, kt_edge_face, h_distance, bool_boundary_edges):
+        
+        edges_direction = nodes_centroids[nodes_of_edges[:, 1]] - nodes_centroids[nodes_of_edges[:, 0]]
+        norm_edge_direction = np.linalg.norm(edges_direction)
+        
+        edges_direction = edges_direction[:, 0:2]
+        
+        faces_direction = faces_centroids[faces_adj_by_edges[:, 1]] - faces_centroids[faces_adj_by_edges[:, 0]]
+        
+        faces_direction = faces_direction[:, 0:2]
+        
+        d1 = np.arange(len(edges_direction))
+        term1 = np.tensordot(edges_direction, faces_direction, axes=((1), (1)))[d1,d1]
+        term1 = term1/np.power(norm_edge_direction, 2)
+        
+        term2 = (kt_edge_face[:, 0]*h_distance[:,0]/kn_edge_face[:, 0] + kt_edge_face[:, 1]*h_distance[:,1]/kn_edge_face[:, 1])/norm_edge_direction
+        
+        tangent_term = term1 - term2
+        
+        return tangent_term
+        

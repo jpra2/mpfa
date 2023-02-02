@@ -110,11 +110,79 @@ lambda_values = mpfaprepropcess.create_weights(
     mesh_properties.edges_of_faces
 )
 
+kn_edge_face, kt_edge_face = mpfaprepropcess.create_edge_face_kn_kt(
+    mesh_properties.nodes_of_edges,
+    mesh_properties.nodes_centroids,
+    mesh_properties.faces_adj_by_edges,
+    permeability,
+    mesh_properties.bool_boundary_edges
+)
+
+normal_term = mpfaprepropcess.get_normal_term(kn_edge_face, h_distance, mesh_properties.bool_boundary_edges)
+
+tangent_term = mpfaprepropcess.get_tangent_term(
+    mesh_properties.nodes_of_edges,
+    mesh_properties.nodes_centroids,
+    mesh_properties.faces_adj_by_edges,
+    mesh_properties.faces_centroids,
+    kn_edge_face,
+    kt_edge_face,
+    h_distance,
+    mesh_properties.bool_boundary_edges
+)
+
+from mpfa.linearity_preserving import equations
+
+transmissibility = equations.mount_transmissibility_matrix(
+    normal_term,
+    mesh_properties.edges_dim,
+    mesh_properties.faces_adj_by_edges,
+    lambda_values,
+    tangent_term,
+    mesh_properties.bool_boundary_edges,
+    mesh_properties.edges,
+    mesh_properties.faces,
+    mesh_properties.nodes_of_edges
+)
+
+dist1 = np.linalg.norm(mesh_properties.faces_centroids - np.array([0, 0, 0]), axis=1)
+dist2 = np.linalg.norm(mesh_properties.faces_centroids - np.array([20, 20, 0]), axis=1)
+
+test1 = dist1 <= dist1.min()
+test2 = dist2 <= dist2.min()
+
+face1 = mesh_properties.faces[test1][0]
+face0 = mesh_properties.faces[test2][0]
+
+transmissibility[face1,:] = 0
+transmissibility[face0,:] = 0
+transmissibility[face1, face1] = 1
+transmissibility[face0, face0] = 1
+transmissibility.eliminate_zeros()
+
+
+rhs = np.zeros(transmissibility.shape[0])
+rhs[face1] = 1
+
+from mpfa.linearity_preserving import equations
+
+pressure = equations.solve_problem(transmissibility, rhs)
+
+nodes_pressures = equations.get_nodes_pressures(lambda_values, pressure, mesh_properties.nodes)
+
+edges_flux = equations.get_edge_flux(normal_term, mesh_properties.edges_dim, pressure, tangent_term, nodes_pressures, mesh_properties.faces_adj_by_edges, mesh_properties.nodes_of_edges)
+
+bool_internal_edges = ~mesh_properties.bool_boundary_edges
+faces_adj = mesh_properties.faces_adj_by_edges
+
+rhs2 = np.bincount(
+    np.concatenate([faces_adj[bool_internal_edges, 0], faces_adj[bool_internal_edges, 1]]).astype(np.int64),
+    weights=np.concatenate([edges_flux[bool_internal_edges], -edges_flux[bool_internal_edges]])
+)
 
 
 
-
-
+import pdb; pdb.set_trace()
 
 
 

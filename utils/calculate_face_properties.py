@@ -259,9 +259,13 @@ def ordenate_nodes_of_edges(edges, faces_adj_by_edges, nodes_of_faces, nodes_of_
         nedges = nodes_of_edges[edge]
         position_1 = np.argwhere(nodes_of_face0==nedges[0]).flatten()[0]
         position_2 = np.argwhere(nodes_of_face0==nedges[1]).flatten()[0]
-        if position_2 > position_1:
-            continue
-        else:
+        n_nodes_of_face0 = len(nodes_of_face0)
+        
+        if position_1 == n_nodes_of_face0-1 and position_2 == 0:
+            pass
+        elif position_2 == n_nodes_of_face0-1 and position_1 == 0:
+            nodes_of_edges[edge][:] = np.flip(nedges)
+        elif position_1 > position_2:
             nodes_of_edges[edge][:] = np.flip(nedges)
         
 def ordenate_edges_and_nodes_of_nodes_xy_plane(nodes, edges, nodes_adj_by_nodes, edges_adj_by_nodes, nodes_centroids):
