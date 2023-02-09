@@ -13,6 +13,96 @@ from pack_errors import errors
 from utils import calculate_face_properties
 
 
+class MeshInit:
+    
+    def initialize(self, mesh_path='', mesh_name=''):
+
+        self.mesh_path = mesh_path
+        self.all_volumes = None
+        self.all_faces = None
+        self.all_nodes = None
+        self.all_edges = None
+        self.mb: core.Core = None
+        self.mtu: topo_util.MeshTopoUtil = None
+        self.root_set = None
+        self.data = dict()
+        self.mesh_name = mesh_name
+
+    def _init_mesh(self):
+        mb = core.Core()
+        scd = ScdInterface(mb)
+        mtu = topo_util.MeshTopoUtil(mb)
+        mb.load_file(self.mesh_path)
+        root_set = mb.get_root_set()
+        return mb, mtu, root_set
+
+    def init_mesh(self):
+        self.mb, self.mtu, self.root_set = self._init_mesh()
+
+    def init_3d_mesh_entities(self):
+        self.all_volumes = self.mb.get_entities_by_dimension(0, 3)
+        self.all_nodes = self.mb.get_entities_by_dimension(0, 0)
+        boundary_faces = self.mb.get_entities_by_dimension(0, 2)
+        # edges = self.mb.get_entities_by_dimension(0, 1)
+        
+        # all_entities = self.mb.get_entities_by_handle(self.root_set)
+        
+        # all_entities = np.setdiff1d(all_entities, self.all_volumes)
+        # all_entities = np.setdiff1d(all_entities, self.all_nodes)
+        # all_entities = np.setdiff1d(all_entities, faces)
+        # all_entities = np.setdiff1d(all_entities, edges)
+        
+        # for ent in all_entities:
+        #     ents = self.mb.get_entities_by_handle(ent)
+        #     print(ents)
+        
+        
+        # type_moab = self.mb.type_from_handle(self.root_set)
+        all_moab_types = dir(types)
+        
+        self.dict_moab_types = dict()
+        
+        for tt in all_moab_types[0:-20]:
+            
+            # exec('print(types.' + tt + ')')
+            # exec('respp[tt] = types.' + tt)
+            exec('self.dict_moab_types[types.' + tt +'] = tt')
+        
+        
+        self.mtu.construct_aentities(self.all_nodes)
+        self.all_faces = self.mb.get_entities_by_dimension(0, 2)
+        # other_faces = []
+        # for face in self.all_faces:
+        #     tags = self.mb.tag_get_tags_on_entity(face)
+        #     if len(tags) != 1:
+        #         other_faces.append(face)
+        
+        # boundary_faces = np.setdiff1d(self.all_faces, other_faces)
+        
+        self.all_edges = self.mb.get_entities_by_dimension(0, 1)
+
+    def init_2d_mesh_entities(self):
+        self.all_nodes = self.mb.get_entities_by_dimension(0, 0)
+        self.all_faces = self.mb.get_entities_by_dimension(0, 2)
+        
+        # type_moab = self.mb.type_from_handle(self.root_set)
+        all_moab_types = dir(types)
+        
+        self.dict_moab_types = dict()
+        
+        for tt in all_moab_types[0:-20]:
+            
+            # exec('print(types.' + tt + ')')
+            # exec('respp[tt] = types.' + tt)
+            exec('self.dict_moab_types[types.' + tt +'] = tt')
+        
+        boundary_edges = self.mb.get_entities_by_dimension(0, 1)
+        self.mtu.construct_aentities(self.all_nodes)
+        
+        self.all_edges = self.mb.get_entities_by_dimension(0, 1)
+    
+
+
 class MeshProperty:
     
     def insert_mesh_name(self, name=''):
@@ -105,97 +195,11 @@ class MeshProperty:
         
     
 
-class CreateMeshProperties:
+class CreateMeshProperties(MeshInit):
 
     '''
         Create mesh properties using pymoab
     '''
-
-    def initialize(self, mesh_path='', mesh_name=''):
-
-        self.mesh_path = mesh_path
-        self.all_volumes = None
-        self.all_faces = None
-        self.all_nodes = None
-        self.all_edges = None
-        self.mb: core.Core = None
-        self.mtu: topo_util.MeshTopoUtil = None
-        self.root_set = None
-        self.data = dict()
-        self.mesh_name = mesh_name
-
-    def _init_mesh(self):
-        mb = core.Core()
-        scd = ScdInterface(mb)
-        mtu = topo_util.MeshTopoUtil(mb)
-        mb.load_file(self.mesh_path)
-        root_set = mb.get_root_set()
-        return mb, mtu, root_set
-
-    def init_mesh(self):
-        self.mb, self.mtu, self.root_set = self._init_mesh()
-
-    def init_3d_mesh_entities(self):
-        self.all_volumes = self.mb.get_entities_by_dimension(0, 3)
-        self.all_nodes = self.mb.get_entities_by_dimension(0, 0)
-        boundary_faces = self.mb.get_entities_by_dimension(0, 2)
-        # edges = self.mb.get_entities_by_dimension(0, 1)
-        
-        # all_entities = self.mb.get_entities_by_handle(self.root_set)
-        
-        # all_entities = np.setdiff1d(all_entities, self.all_volumes)
-        # all_entities = np.setdiff1d(all_entities, self.all_nodes)
-        # all_entities = np.setdiff1d(all_entities, faces)
-        # all_entities = np.setdiff1d(all_entities, edges)
-        
-        # for ent in all_entities:
-        #     ents = self.mb.get_entities_by_handle(ent)
-        #     print(ents)
-        
-        
-        # type_moab = self.mb.type_from_handle(self.root_set)
-        all_moab_types = dir(types)
-        
-        self.dict_moab_types = dict()
-        
-        for tt in all_moab_types[0:-20]:
-            
-            # exec('print(types.' + tt + ')')
-            # exec('respp[tt] = types.' + tt)
-            exec('self.dict_moab_types[types.' + tt +'] = tt')
-        
-        
-        self.mtu.construct_aentities(self.all_nodes)
-        self.all_faces = self.mb.get_entities_by_dimension(0, 2)
-        # other_faces = []
-        # for face in self.all_faces:
-        #     tags = self.mb.tag_get_tags_on_entity(face)
-        #     if len(tags) != 1:
-        #         other_faces.append(face)
-        
-        # boundary_faces = np.setdiff1d(self.all_faces, other_faces)
-        
-        self.all_edges = self.mb.get_entities_by_dimension(0, 1)
-
-    def init_2d_mesh_entities(self):
-        self.all_nodes = self.mb.get_entities_by_dimension(0, 0)
-        self.all_faces = self.mb.get_entities_by_dimension(0, 2)
-        
-        # type_moab = self.mb.type_from_handle(self.root_set)
-        all_moab_types = dir(types)
-        
-        self.dict_moab_types = dict()
-        
-        for tt in all_moab_types[0:-20]:
-            
-            # exec('print(types.' + tt + ')')
-            # exec('respp[tt] = types.' + tt)
-            exec('self.dict_moab_types[types.' + tt +'] = tt')
-        
-        boundary_edges = self.mb.get_entities_by_dimension(0, 1)
-        self.mtu.construct_aentities(self.all_nodes)
-        
-        self.all_edges = self.mb.get_entities_by_dimension(0, 1)
 
     def _init_3d_properties(self, faces, volumes, nodes):
         n_faces = len(faces)

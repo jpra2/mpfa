@@ -11,10 +11,15 @@ from mpfa.linearity_preserving.preprocess import MpfaLinearityPreservingPreproce
 
 mesh_path = os.path.join(defpaths.mesh, '2d_square_unstructured.msh')
 
-mesh_create = CreateMeshProperties()
-mesh_name = 'square_unstructured_test'
-mesh_create.initialize(mesh_path=mesh_path, mesh_name=mesh_name)
-mesh_properties: MeshProperty = mesh_create.create_2d_mesh_data()
+def create_initial_mesh_properties():
+    
+    mesh_create = CreateMeshProperties()
+    mesh_name = 'square_unstructured_test'
+    mesh_create.initialize(mesh_path=mesh_path, mesh_name=mesh_name)
+    mesh_properties: MeshProperty = mesh_create.create_2d_mesh_data()
+    return mesh_properties
+
+mesh_properties = create_initial_mesh_properties()
 
 faces_area, faces_normal_unitary  = calculate_face_properties.define_normal_and_area(mesh_properties.faces, mesh_properties.nodes_of_faces, mesh_properties.nodes_centroids)
 
@@ -83,7 +88,8 @@ tk_ok = mpfaprepropcess.create_Tk_Ok_vector(
 )
 
 permeability = np.zeros((len(mesh_properties.faces), 2, 2))
-permeability[:,0,0] = 1
+# permeability[:,0,0] = 1
+permeability[:,0,0] = 2
 permeability[:,1,1] = 2
 
 kn_kt_tk_ok = mpfaprepropcess.create_kn_and_kt_Tk_Ok(
@@ -133,6 +139,12 @@ tangent_term = mpfaprepropcess.get_tangent_term(
 
 from mpfa.linearity_preserving import equations
 
+dirichlet_edges = equations.define_dirichlet_boundary_edges(
+    mesh_properties.edges,
+    mesh_properties.nodes_of_edges,
+    mesh_properties.nodes_centroids
+)
+
 transmissibility = equations.mount_transmissibility_matrix(
     normal_term,
     mesh_properties.edges_dim,
@@ -145,30 +157,63 @@ transmissibility = equations.mount_transmissibility_matrix(
     mesh_properties.nodes_of_edges
 )
 
-dist1 = np.linalg.norm(mesh_properties.faces_centroids - np.array([0, 0, 0]), axis=1)
-dist2 = np.linalg.norm(mesh_properties.faces_centroids - np.array([20, 20, 0]), axis=1)
-
-test1 = dist1 <= dist1.min()
-test2 = dist2 <= dist2.min()
-
-face1 = mesh_properties.faces[test1][0]
-face0 = mesh_properties.faces[test2][0]
-
-transmissibility[face1,:] = 0
-transmissibility[face0,:] = 0
-transmissibility[face1, face1] = 1
-transmissibility[face0, face0] = 1
-transmissibility.eliminate_zeros()
-
-
 rhs = np.zeros(transmissibility.shape[0])
-rhs[face1] = 1
+
+equations.update_dirichlet_boundary(
+    dirichlet_edges,
+    transmissibility,
+    rhs,
+    mesh_properties.nodes_of_edges,
+    mesh_properties.faces_adj_by_edges,
+    mesh_properties.nodes_centroids,
+    kn_edge_face,
+    kt_edge_face,
+    h_distance,
+    mesh_properties.faces_centroids,
+    mesh_properties.edges_dim
+)
+
+# dist1 = np.linalg.norm(mesh_properties.faces_centroids - np.array([0, 0, 0]), axis=1)
+# dist2 = np.linalg.norm(mesh_properties.faces_centroids - np.array([20, 20, 0]), axis=1)
+
+# test1 = dist1 <= dist1.min()
+# test2 = dist2 <= dist2.min()
+
+# face1 = mesh_properties.faces[test1][0]
+# face0 = mesh_properties.faces[test2][0]
+
+# transmissibility[face1,:] = 0
+# transmissibility[face0,:] = 0
+# transmissibility[face1, face1] = 1
+# transmissibility[face0, face0] = 1
+# transmissibility.eliminate_zeros()
+
+
+# rhs[face1] = 1
+
+from datamanager.mesh_data import MeshData
+
+mesh_data = MeshData(mesh_path=mesh_path)
+mesh_data.create_tag('pressure')
 
 from mpfa.linearity_preserving import equations
 
 pressure = equations.solve_problem(transmissibility, rhs)
+equations.test_max_limits(0, 100, pressure)
+equations.test_xlinearity(mesh_properties.faces_centroids, mesh_properties.faces_adj_by_edges, mesh_properties.bool_boundary_edges, pressure, mesh_properties.faces)
 
-nodes_pressures = equations.get_nodes_pressures(lambda_values, pressure, mesh_properties.nodes)
+mesh_data.insert_tag_data('pressure', pressure, 'faces', mesh_properties.faces)
+
+nodes_pressures = equations.get_nodes_pressures(lambda_values, pressure, mesh_properties.nodes, dirichlet_edges, mesh_properties.nodes_of_edges)
+
+mesh_data.insert_tag_data('pressure', nodes_pressures, 'nodes', mesh_properties.nodes)
+mesh_data.create_tag('nodes_fora', data_type='int')
+
+nodes_fora = mesh_properties.nodes[(nodes_pressures < 0) | (nodes_pressures > 1)]
+
+nodes_fora_value = np.ones(len(nodes_fora), dtype=np.int64)
+mesh_data.insert_tag_data('nodes_fora', nodes_fora_value, 'nodes', nodes_fora)
+mesh_data.export_all_elements_type_to_vtk(export_name='test_node', element_type='nodes')
 
 edges_flux = equations.get_edge_flux(normal_term, mesh_properties.edges_dim, pressure, tangent_term, nodes_pressures, mesh_properties.faces_adj_by_edges, mesh_properties.nodes_of_edges)
 
@@ -179,6 +224,14 @@ rhs2 = np.bincount(
     np.concatenate([faces_adj[bool_internal_edges, 0], faces_adj[bool_internal_edges, 1]]).astype(np.int64),
     weights=np.concatenate([edges_flux[bool_internal_edges], -edges_flux[bool_internal_edges]])
 )
+print(np.absolute(rhs2).max())
+
+mesh_data.create_tag('flux_faces')
+mesh_data.insert_tag_data('flux_faces', rhs2, 'faces', mesh_properties.faces)
+mesh_data.export_all_elements_type_to_vtk(export_name='test', element_type='faces')
+
+
+
 
 
 
@@ -189,4 +242,4 @@ import pdb; pdb.set_trace()
 
 import pdb; pdb.set_trace()
 
-mesh_properties.export_data()
+# mesh_properties.export_data()
