@@ -19,7 +19,10 @@
 *.npy
 *.npz
 *.vtk
+*.geo
 !cube_unstructured.msh
 !cube_structured.msh
+!2d_unstructured.msh
+!2d_square.geo
 *.geo
 
