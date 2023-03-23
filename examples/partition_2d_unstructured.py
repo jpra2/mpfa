@@ -99,13 +99,19 @@ def create_partition_kmeans(x_centroids, y_centroids):
         epsilon_0 = epsilon[i]
         
     import pdb; pdb.set_trace()
+    
     gids = cluster['centroid number'].to_numpy().astype(int) - 1
-    return gids
+    cents = np.zeros((len(gids), 2))
+    cents[:,0] = centroids['x'].to_numpy()
+    cents[:,1] = centroids['y'].to_numpy()
+    return gids, cents
 
 def create_partition(level, x_centroids, y_centroids, faces_adjacencies):
     gid_name = 'gid_' + str(level)
     faces_adjacencies_coarse_name = 'faces_adjacencies_' + str(level)
-    gids = create_partition_kmeans(x_centroids, y_centroids)
+    gids, coarse_centroids = create_partition_kmeans(x_centroids, y_centroids)
+
+
 
     # mesh_data = MeshData(mesh_path=mesh_path)
     # mesh_data.create_tag(gid_name, data_type='int')
@@ -113,6 +119,11 @@ def create_partition(level, x_centroids, y_centroids, faces_adjacencies):
     # mesh_data.export_all_elements_type_to_vtk(export_name='test_gids', element_type='faces')
 
     def create_faces_adjacencies(gids, faces_adjacencies):
+        adjacencies = []
+        all_adj = faces_adjacencies
+        adj_test = (all_adj[:,0] != -1) & (all_adj[:, 1] != -1)
+        
+
         pass
         
 
@@ -137,7 +148,12 @@ def create_dual(level, x_centroids, y_centroids, adjacencies, gid_level):
 
 mesh_properties = create_initial_mesh_properties(mesh_path, mesh_name)
 
-create_partition(1, mesh_properties.faces_centroids[:,0], mesh_properties.faces_centroids[:,1], mesh_properties.faces_adj_by_edges)
+create_partition(
+    1, 
+    mesh_properties.faces_centroids[:,0], 
+    mesh_properties.faces_centroids[:,1], 
+    mesh_properties.faces_adj_by_edges
+)
 
 # mesh_properties = load_mesh_properties(mesh_name)
 
