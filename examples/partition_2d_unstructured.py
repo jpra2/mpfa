@@ -4,7 +4,7 @@ from datamanager.mesh_data import MeshData
 from definitions import defpaths
 import numpy as np
 import pandas as pd
-
+from multiscale_methods.create_dual import create_dual_2d
 
 
 
@@ -92,69 +92,79 @@ def create_partition_kmeans(x_centroids, y_centroids):
             z[p] = ((cluster[cluster['centroid number'] == p+1][['x','y']] - centroids.iloc[p])**2).values.sum()
         epsilon[i] = sum(z) # 'epsilon' is sum of squares of distances between points and centroid of a cluster for each iteration
         test = abs(epsilon_0 - epsilon[i])
-        print(test)
         if test < kmeans_tol:
             stop = True
 
         epsilon_0 = epsilon[i]
-        
-    import pdb; pdb.set_trace()
     
     gids = cluster['centroid number'].to_numpy().astype(int) - 1
-    cents = np.zeros((len(gids), 2))
+    cents = np.zeros((len(centroids['x']), 2))
     cents[:,0] = centroids['x'].to_numpy()
     cents[:,1] = centroids['y'].to_numpy()
     return gids, cents
 
 def create_partition(level, x_centroids, y_centroids, faces_adjacencies):
+    gids, coarse_centroids = create_partition_kmeans(x_centroids, y_centroids)    
+    return gids, coarse_centroids
+
+def create_coarse_volumes(level, x_centroids, y_centroids, faces_adjacencies):
     gid_name = 'gid_' + str(level)
+    coarse_centroids_name = 'centroids_' + str(level)
     faces_adjacencies_coarse_name = 'faces_adjacencies_' + str(level)
-    gids, coarse_centroids = create_partition_kmeans(x_centroids, y_centroids)
+    # TODO coarse_faces_adjacencies coarse_boundary_edges
 
+    coarse_gids, coarse_centroids = create_partition(
+        1, 
+        x_centroids, 
+        y_centroids, 
+        faces_adjacencies
+    )
 
-
-    # mesh_data = MeshData(mesh_path=mesh_path)
-    # mesh_data.create_tag(gid_name, data_type='int')
-    # mesh_data.insert_tag_data(gid_name, gids, elements_type='faces', elements_array=mesh_properties.faces)
-    # mesh_data.export_all_elements_type_to_vtk(export_name='test_gids', element_type='faces')
-
-    def create_faces_adjacencies(gids, faces_adjacencies):
-        adjacencies = []
-        all_adj = faces_adjacencies
-        adj_test = (all_adj[:,0] != -1) & (all_adj[:, 1] != -1)
-        
-
-        pass
-        
-
-    mesh_properties.insert_data({
-        gid_name: gids
-    })
-
-    mesh_properties.export_data()
-
-def create_dual(level, x_centroids, y_centroids, adjacencies, gid_level):
-    dual_name = 'dual_' + str(level)
-    gids = np.arange(len(x_centroids))
-
-
-
-
-    def create_vertices():
-        pass
-
-    def create_edges():
-        pass
+    return {
+        gid_name: coarse_gids,
+        coarse_centroids_name: coarse_centroids
+    }
 
 mesh_properties = create_initial_mesh_properties(mesh_path, mesh_name)
 
-create_partition(
-    1, 
-    mesh_properties.faces_centroids[:,0], 
-    mesh_properties.faces_centroids[:,1], 
-    mesh_properties.faces_adj_by_edges
+mesh_properties.insert_data(
+    create_coarse_volumes(
+        1,
+        mesh_properties.faces_centroids[:, 0],
+        mesh_properties.faces_centroids[:, 1],
+        mesh_properties.faces_adj_by_edges
+    )
 )
 
-# mesh_properties = load_mesh_properties(mesh_name)
+mesh_properties.export_data()
 
+
+mesh_properties = load_mesh_properties(mesh_name)
+
+mesh_properties.insert_data(
+    create_dual_2d(
+        1,
+        mesh_properties.faces_centroids[:, 0:2],
+        mesh_properties.faces_adj_by_edges,
+        mesh_properties.gid_1,
+        mesh_properties.bool_boundary_edges,
+        mesh_properties.nodes_of_edges,
+        mesh_properties.nodes_centroids[:, 0:2],
+        mesh_properties.edges,
+        mesh_properties.faces_adj_by_nodes,
+        mesh_properties.nodes_of_faces
+    )
+)
+
+
+mesh_data = MeshData(mesh_path=mesh_path)
+mesh_data.create_tag('dual_id', data_type='int')
+mesh_data.insert_tag_data('dual_id', mesh_properties.dual_id_1, elements_type='faces', elements_array=mesh_properties.faces)
+mesh_data.create_tag('coarse_id', data_type='int')
+mesh_data.insert_tag_data('coarse_id', mesh_properties.gid_1, elements_type='faces', elements_array=mesh_properties.faces)
+mesh_data.export_all_elements_type_to_vtk(export_name='test_gids', element_type='faces')
+
+import pdb; pdb.set_trace()
+
+print(mesh_properties)
 

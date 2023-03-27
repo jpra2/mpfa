@@ -140,45 +140,8 @@ class MeshProperty:
     def __setattr__(self, name, value):
         raise Exception("It is read only!")      
     
-    # @property
-    # def volumes(self):
-    #     return self._data['volumes']
-    
-    # @property
-    # def faces(self):
-    #     return self._data['faces']
-    
-    # @property
-    # def nodes(self):
-    #     return self._data['nodes']
-
-    # @property
-    # def nodes_of_faces(self):
-    #     return self._data['nodes_of_faces']
-
-    # @property
-    # def volumes_adjacencies_by_faces(self):
-    #     return self._data['volumes_adj_by_faces']
-        
-    # @property
-    # def nodes_centroids(self):
-    #     return self._data['nodes_centroids']
-
-    # @property
-    # def internal_faces(self):
-    #     return self.faces[self._data['bool_internal_faces']]
-    
-    # @property
-    # def boundary_faces(self):
-    #     return np.setdiff1d(self.faces, self.internal_faces)
-    
-    # @property
-    # def nodes_of_volumes(self):
-    #     return self._data['nodes_of_volumes']
-    
-    # @property
-    # def faces_of_volumes(self):
-    #     return self._data['faces_of_volumes']
+    def __getitem__(self, key):
+        return self.__dict__[key]
     
     @property
     def class_path(self):
@@ -455,7 +418,7 @@ class CreateMeshProperties(MeshInit):
         mesh_property = MeshProperty()
         mesh_property.insert_mesh_name(self.data['mesh_name'][0])
         mesh_property.insert_data(copy.deepcopy(self.data))
-        mesh_property.export_data()
+        # mesh_property.export_data()
         return mesh_property
         
 
