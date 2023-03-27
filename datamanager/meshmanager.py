@@ -423,6 +423,18 @@ class CreateMeshProperties(MeshInit):
         
 
 
+def create_initial_mesh_properties(mesh_path, mesh_name):
+    mesh_create = CreateMeshProperties()
+    mesh_create.initialize(mesh_path=mesh_path, mesh_name=mesh_name)
+    mesh_properties: MeshProperty = mesh_create.create_2d_mesh_data()
+    return mesh_properties
+
+def load_mesh_properties(mesh_name):
+    mesh_properties = MeshProperty()
+    mesh_properties.insert_mesh_name([mesh_name])
+    mesh_properties.load_data()
+    return mesh_properties
+
 
 # if __name__ == '__main__':
 #     mesh_path = 'mesh/80x80x1_ufce.h5m'

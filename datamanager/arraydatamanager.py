@@ -48,9 +48,9 @@ class SuperArrayManager:
     def insert_name(self, name=''):
         self.__dict__['name'] = np.array([name])
     
-    @property
-    def class_name(self):
-        return self.__class__.__name__    
+    @classmethod
+    def class_name(cls):
+        return cls.__name__
     
     def insert_data(self, data: dict):
         """data is a dictionary with str keys and np.ndarray values
@@ -83,7 +83,7 @@ class SuperArrayManager:
     
     @property
     def class_path(self):
-        return os.path.join(defpaths.flying, self.class_name + '_' +  self.name[0] + '.npz')
+        return os.path.join(defpaths.flying, self.class_name() + '_' +  self.name[0] + '.npz')
     
     def export_data(self):
         manager = ArrayDataManager(self.class_path)
@@ -93,3 +93,6 @@ class SuperArrayManager:
     def load_data(self):
         manager = ArrayDataManager(self.class_path)
         self.insert_data(manager.get_data_from_load())
+
+    def __getitem__(self, key):
+        return self.__dict__[key]
