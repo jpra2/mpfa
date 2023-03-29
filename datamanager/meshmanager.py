@@ -11,6 +11,7 @@ import os
 from datamanager.arraydatamanager import ArrayDataManager, test_str_instance, test_array_instance
 from pack_errors import errors
 from utils import calculate_face_properties
+import copy
 
 
 class MeshInit:
@@ -155,6 +156,46 @@ class MeshProperty:
     def load_data(self):
         manager = ArrayDataManager(self.class_path)
         self.insert_data(manager.get_data_from_load())
+
+    def get_all_data(self):
+        return copy.deepcopy(self.__dict__)
+
+    def rename_data(self, datas_to_rename: dict):
+        """ Update the data name
+
+        @param datas_to_rename: dict where key = old data name, value = new data name
+        """
+
+        new_data = dict()
+
+        for name in list(datas_to_rename.keys()):
+            data = copy.deepcopy(self[name])
+            new_name = datas_to_rename[name]
+            del self.__dict__[name]
+            new_data.update({new_name: data})
+
+        self.insert_data(new_data)
+    
+    def update_data(self, datas_to_update):
+        
+        my_datas_name = list(self.__dict__.keys())
+        
+        new_data = dict()
+        for name in datas_to_update:
+            if name not in my_datas_name:
+                raise errors.NameExistsError
+            new_data.update({
+                name: datas_to_update[name]   
+            })
+            del self.__dict__[name]
+        
+        self.insert_data(new_data)
+        
+        
+            
+            
+
+
         
     
 
