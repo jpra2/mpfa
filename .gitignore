@@ -11,7 +11,7 @@
 *.pyc
 *.c
 *__pycache__/
-*remove/
+remove/
 *_rm.py
 *.msh
 *.h5m
@@ -25,4 +25,6 @@
 !2d_unstructured.msh
 !2d_square.geo
 venv/
+.spyproject/
+.conda/
 
