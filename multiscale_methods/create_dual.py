@@ -17,7 +17,8 @@ def create_dual_2d(
         nodes_centroids,
         edges,
         faces_adj_by_nodes,
-        nodes_of_faces
+        nodes_of_faces,
+        coarse_adjacencies
     ):
     """Create dual structure
 
