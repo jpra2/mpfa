@@ -1,5 +1,7 @@
 import numpy as np
 import networkx as nx
+from scipy.sparse.csgraph import shortest_path
+from scipy import sparse as sp
 
 def get_local_delta(nodes_of_edges, nodes_centroids):
     nodes_edges_centroids = nodes_centroids[nodes_of_edges]
@@ -17,12 +19,9 @@ def create_dual_2d(
         nodes_centroids,
         fine_edges,
         faces_adj_by_nodes,
-        nodes_of_faces,
         coarse_adjacencies,
         fine_edges_centroids,
-        fine_faces,
-        fine_bool_internal_fine_edges_level,
-        fine_bool_intersect_fine_edges_level
+        fine_faces
     ):
     """Create dual structure
 
@@ -41,13 +40,10 @@ def create_dual_2d(
     edges = fine_edges
     local_delta = get_local_delta(nodes_of_edges, nodes_centroids)
     gids = fine_faces
-    min_delta = local_delta/10
     dual_gids = gids.copy()
     dual_gids[:] = -1
 
     to_resp = {}
-    coarse_adj_name = 'coarse_adj_' + str(level)
-    coarse_adj_fine_name = 'coarse_adj_fine_' + str(level)
     dual_gid_name = 'dual_id_' + str(level)
     
     dists = np.zeros(adjacencies.shape)
@@ -55,8 +51,6 @@ def create_dual_2d(
     dists[:, 1] = np.linalg.norm(centroids[adjacencies[:, 1]] - fine_edges_centroids, axis=1)
 
     def create_vertices_and_boundary_edges():
-
-        resp = {}
 
         boundary_faces = adjacencies[bool_boundary_edges]
         boundary_faces = boundary_faces[boundary_faces != -1]
@@ -96,44 +90,6 @@ def create_dual_2d(
         dual_gids[boundary_faces] = 2
         dual_gids[gids_corner_vertices()] = 3
 
-        def define_fine_edges_in_coarse_volumes_adjacencies(level, gids, coarse_gids, adjacencies, edges, bool_boundary_edges):
-
-            coarse_adj_fine_name = 'coarse_adj_fine'
-            coarse_adj_name = 'coarse_adj'
-
-            bool_internal_edges = ~bool_boundary_edges
-            coarse_adj_fine = adjacencies.copy()
-            coarse_adj_fine[bool_internal_edges] = coarse_gids[adjacencies[bool_internal_edges]]
-            coarse_adj_fine[bool_boundary_edges,0] = coarse_gids[adjacencies[bool_boundary_edges, 0]]
-
-            coarse_adj = set()
-
-            for cid in np.unique(coarse_gids):
-                local_adj = coarse_adj_fine[
-                    ((coarse_adj_fine[:,0] == cid) | (coarse_adj_fine[:,1] == cid)) & 
-                    (coarse_adj_fine[:,0] != coarse_adj_fine[:,1])
-                ]
-                local_adj = np.unique(local_adj, axis=0)
-
-                for adj in local_adj:
-                    tuple_adj = tuple(adj)
-                    test1 = {tuple_adj} & coarse_adj
-                    test2 = {tuple(reversed(tuple_adj))} & coarse_adj
-                    # import pdb; pdb.set_trace()    
-                    if (len(test1) > 0) | (len(test2) > 0):
-                        continue
-                    else:
-                        coarse_adj.add(tuple_adj)
-
-            coarse_adj = np.array([np.array(i) for i in coarse_adj])
-            
-            import pdb; pdb.set_trace()
-            
-            return {
-                coarse_adj_name: coarse_adj,
-                coarse_adj_fine_name: coarse_adj_fine
-            }
-
         def create_boundary_dual_vertices_ids(coarse_gids, gids, dual_gids, edges, adjacencies, nodes_of_edges, nodes_centroids, centroids, bool_boundary_edges, coarse_adj):
             
             b_vertices = []
@@ -156,7 +112,6 @@ def create_dual_2d(
                 b_vertices.append(vertice)
             return np.array(b_vertices)
 
-        # resp.update(define_fine_edges_in_coarse_volumes_adjacencies(level, gids, coarse_gids, adjacencies, edges, bool_boundary_edges))
         b_vertices = create_boundary_dual_vertices_ids(coarse_gids, gids, dual_gids, edges, adjacencies, nodes_of_edges, nodes_centroids, centroids, bool_boundary_edges, coarse_adjacencies)
         dual_gids[b_vertices] = 3
 
@@ -178,65 +133,43 @@ def create_dual_2d(
 
     create_vertices_and_boundary_edges()
     
-
     def create_internal_dual_edges(level):
         
-
+        def get_Path(Pr, i, j):
+            path = [j]
+            k = j
+            while Pr[i, k] != -9999:
+                path.append(Pr[i, k])
+                k = Pr[i, k]
+            return np.array(path[::-1])
+        
         def mount_graph(adjacencies, dists, coarse_gid, coarse_adj_fine, fine_vertice, fine_edge):
-            gr = nx.Graph()
             
             test = (coarse_adj_fine[:, 0] == coarse_gid) & (coarse_adj_fine[:, 1] == coarse_gid)
             local_adjacencies = adjacencies[test]
             
             faces = np.unique(local_adjacencies)
-            local_faces = np.arange(len(faces))
+            n_faces = len(faces)
+            local_faces = np.arange(n_faces)
             
             local_map = np.repeat(-1, faces.max() + 1)
             local_map[faces] = local_faces
-            indexes = np.arange(len(local_map))
             
             local_adjacencies_remapped = local_map[local_adjacencies]
-            
+            lr = local_adjacencies_remapped
             
             dists_local = dists[test].sum(axis=1)
+            
             vertice_r = local_map[fine_vertice][0]
             edge_r = local_map[fine_edge][0]
             
-            int1 = np.intersect1d(local_faces, vertice_r)
-            int2 = np.intersect1d(local_faces, edge_r)
+            local_graph = sp.csr_matrix((dists_local, (lr[:, 0], lr[:, 1])), shape=(n_faces, n_faces))
+            D, Pr = shortest_path(local_graph, directed=True, method='D', return_predecessors=True)
+            path = get_Path(Pr, vertice_r, edge_r)
+            path = np.setdiff1d(path, [vertice_r, edge_r])
+            path = faces[np.isin(local_faces, path)]
             
-            import pdb; pdb.set_trace()
-            
-
-            for i, adj in enumerate(local_adjacencies_remapped):
-                dist = dists_local[i]
-                test1 = adj == vertice_r
-                test2 = adj == edge_r
-                if np.any(test1) | np.any(test2):
-                    import pdb; pdb.set_trace()
-                
-                # cmin0 = nodes_centroids[nodes_of_faces[adj[0]]].min(axis=0)
-                # cmax0 = nodes_centroids[nodes_of_faces[adj[0]]].max(axis=0)
-                # cmin1 = nodes_centroids[nodes_of_faces[adj[1]]].min(axis=0)
-                # cmax1 = nodes_centroids[nodes_of_faces[adj[1]]].max(axis=0)
-                # points = np.array([cmin0, cmax0, cmin1, cmax1])
-                # dists = []
-                # for point in points:
-                #     dists.append(np.linalg.norm(points - point, axis=1))
-                # dist = np.concatenate(dists).max()
-                gr.add_edge(adj[0], adj[1], weight=dist)
-                
-            import pdb; pdb.set_trace()
-            
-            
-            edges_r = nx.shortest_path(gr, source=vertice_r, target=edge_r, weight='weight')
-            
-            edges_resp = indexes[np.isin(local_map, edges_r)]
-            import pdb; pdb.set_trace()
-            
-            
-            
-            return gr
+            return path
         
         def create_edges_dep0(gr: nx.Graph, coarse_gids, coarse_adj, centroids, adjacencies, edges, coarse_adj_fine, nodes_of_edges, nodes_centroids, dual_gids, gids):
             defined_coarse_adjs = set()
@@ -310,7 +243,11 @@ def create_dual_2d(
             cids = np.unique(coarse_gids)
             
             coarse_adj_fine = coarse_gids[fine_adjacencies]
-            coarse_adj_fine[fine_adjacencies[:,1] == -1, 1] = -1 
+            coarse_adj_fine[fine_adjacencies[:,1] == -1, 1] = -1
+            
+            coarse_boundary_faces = np.unique(coarse_adj_fine[:,0][coarse_adj_fine[:, 1] == -1])
+            
+            cids = np.setdiff1d(cids, coarse_boundary_faces)
             
             for cid in cids:
                 
@@ -341,46 +278,22 @@ def create_dual_2d(
                         selected_edge = fine_edges_intersection[dists_ <= dists_.min()]
                     
                     fine_faces_selected = fine_adjacencies[selected_edge]
-                    dual_edges.append(fine_faces_selected)
+                    dual_edges.append(fine_faces_selected.flatten())
                     
                     fine_face_edge_cid = fine_faces_selected[coarse_gids[fine_faces_selected] == cid]
                     fine_face_edge_coarse_face = fine_faces_selected[coarse_gids[fine_faces_selected] == coarse_face]
                     
                     face_vertice_cid = fine_faces[(dual_gids == 3) & (coarse_gids == cid)]
                     face_vertice_coarse_face = fine_faces[(dual_gids == 3) & (coarse_gids == coarse_face)]
-                    
-                    try:
                         
-                        edges_cid = mount_graph(fine_adjacencies, dists, cid, coarse_adj_fine, face_vertice_cid, fine_face_edge_cid)
-                        edges_coarse_face = mount_graph(fine_adjacencies, dists, coarse_face, coarse_adj_fine, face_vertice_coarse_face, fine_face_edge_coarse_face)
-                    except:
-                        import pdb; pdb.set_trace()
-                    dual_edges.append(np.concatenate([edges_cid, edges_coarse_face]))                    
-                    import pdb; pdb.set_trace()
+                    edges_cid = mount_graph(fine_adjacencies, dists, cid, coarse_adj_fine, face_vertice_cid, fine_face_edge_cid)
+                    edges_coarse_face = mount_graph(fine_adjacencies, dists, coarse_face, coarse_adj_fine, face_vertice_coarse_face, fine_face_edge_coarse_face)
+                    dual_edges.append(np.concatenate([edges_cid, edges_coarse_face]).flatten())                    
                     defined_coarse_vols_tuples.add((cid, coarse_face))
             
             return np.concatenate(dual_edges)
-                
-                
-                
-                 
-                
-                
-                
-                
-                
-                
-            
-            
-            
-            
-            
-            
-            
-        
-        create_edges(coarse_gids, adjacencies, coarse_adjacencies, fine_edges_centroids, fine_edges, dual_gids, fine_faces, dists)
-        gr = mount_graph(adjacencies, bool_boundary_edges, centroids, nodes_of_faces, nodes_centroids)
-        dual_edges = create_edges(gr, coarse_gids, to_resp[coarse_adj_name], centroids, adjacencies, edges, to_resp[coarse_adj_fine_name], nodes_of_edges, nodes_centroids, dual_gids, gids)
+       
+        dual_edges = create_edges(coarse_gids, adjacencies, coarse_adjacencies, fine_edges_centroids, fine_edges, dual_gids, fine_faces, dists)
         dual_gids[dual_edges] = 2
     
     create_internal_dual_edges(level)
