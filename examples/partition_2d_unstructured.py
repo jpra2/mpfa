@@ -118,7 +118,7 @@ def create_partition(level, x_centroids, y_centroids, faces_adjacencies):
     gids, coarse_centroids = create_partition_kmeans(x_centroids, y_centroids)    
     return gids, coarse_centroids
 
-def create_coarse_adjacencies_dep0(level, fine_adjacencies, gids_level, bool_boundary_edges, edges, fine_edges_centroids):
+def create_coarse_adjacencies(level, fine_adjacencies, gids_level, bool_boundary_edges, edges, fine_edges_centroids):
     
     resp = dict()
     bool_intersect_coarse_edges = np.full(len(edges), False, dtype=bool)
@@ -211,7 +211,7 @@ def create_coarse_adjacencies_dep0(level, fine_adjacencies, gids_level, bool_bou
             
     return resp
 
-def create_coarse_adjacencies(level, fine_adjacencies, gids_level, bool_boundary_edges, edges, fine_edges_centroids):
+def create_coarse_adjacencies_v2(level, fine_adjacencies, gids_level, bool_boundary_edges, edges, fine_edges_centroids):
     
     resp = dict()
     bool_intersect_coarse_edges = np.full(len(edges), False, dtype=bool)
@@ -492,58 +492,77 @@ def recalculate_coarse_centroids(level, gids_level, fine_faces_centroids, coarse
     return new_centroids
 
 
-def coarse_verify_2(level, gids_level, fine_adjacencies, fine_bool_boundary_edges, fine_edges, coarse_centroids, fine_faces_centroids, faces_adj_by_nodes, nodes_of_edges):
+def coarse_verify_2(level, gids_level, fine_adjacencies, fine_bool_boundary_edges, fine_edges, coarse_centroids, fine_faces_centroids):
+    
     fine_bool_internal_edges = ~fine_bool_boundary_edges
     cids = np.unique(gids_level)
     gids_level_2 = gids_level.copy()
-    coarse_centroids_2 = coarse_centroids.copy()
+    coarse_centroids_2 = coarse_centroids.copy()    
     
-    coarse_adj_test = gids_level[fine_adjacencies]
-    coarse_adj_test[fine_bool_boundary_edges, 1] = -1
 
     for cid in cids:
-        fine_edges_intersection = fine_edges[
+        coarse_adj_test = gids_level_2[fine_adjacencies]
+        coarse_adj_test[fine_bool_boundary_edges, 1] = -1
+        test = (
             (
                 ((coarse_adj_test[:, 0] == cid) & (coarse_adj_test[:, 1] != cid)) |
                 ((coarse_adj_test[:, 1] == cid) & (coarse_adj_test[:, 0] != cid))
             ) &
             fine_bool_internal_edges
-        ]
-        nodes_of_edges_intersetion = np.unique(nodes_of_edges[fine_edges_intersection])
-        n_fine_edges = len(fine_edges_intersection)
+        )
+        coarse_ids_to_test = np.unique(coarse_adj_test[test])
+        coarse_ids_to_test = coarse_ids_to_test[coarse_ids_to_test != cid]
 
-        if n_fine_edges == 1:
-            for node in nodes_of_edges_intersetion:
-                faces_node = faces_adj_by_nodes[node]
-                coarse_ids_faces_node = np.unique(gids_level[faces_node])
-                ncoarses = len(coarse_ids_faces_node)
-                if ncoarses > 2:
-                    other_coarses = coarse_ids_faces_node[coarse_ids_faces_node!=cid]
-                    selected_coarse = other_coarses[0]
-                    gids_level_2[faces_node] = selected_coarse
-                    new_coarse_centroids = recalculate_coarse_centroids(level, gids_level, fine_faces_centroids, coarse_ids_faces_node)
-                    coarse_centroids_2[coarse_ids_faces_node] = new_coarse_centroids
-                    break
+        for cid_test in coarse_ids_to_test:
 
-        elif n_fine_edges == 2:
-            for node in nodes_of_edges_intersetion:
-                faces_node = faces_adj_by_nodes[node]
-                coarse_ids_faces_node = np.unique(gids_level[faces_node])
-                ncoarses = len(coarse_ids_faces_node)
-                if ncoarses > 2:
-                    other_coarses = coarse_ids_faces_node[coarse_ids_faces_node!=cid]
-                    selected_coarse = other_coarses[0]
-                    gids_level_2[faces_node] = selected_coarse
-                    new_coarse_centroids = recalculate_coarse_centroids(level, gids_level, fine_faces_centroids, coarse_ids_faces_node)
-                    coarse_centroids_2[coarse_ids_faces_node] = new_coarse_centroids
-        else:
-            pass
-        
-        
-        return {
-            'gid_' + str(level): gids_level_2,
-            'faces_centroids_' + str(level): gids_level_2
-        }
+            test2 = (
+                (
+                    ((coarse_adj_test[:, 0] == cid) & (coarse_adj_test[:, 1] == cid_test)) |
+                    ((coarse_adj_test[:, 1] == cid) & (coarse_adj_test[:, 0] == cid_test))
+                ) &
+                fine_bool_internal_edges
+            )
+
+            fine_edges_intersection = fine_edges[test2]
+            n_fine_edges = len(fine_edges_intersection)        
+
+            if n_fine_edges == 1:
+                fine_faces_adj = fine_adjacencies[fine_edges_intersection[0]]
+                cross_coarse_id = cid_test
+                _face = fine_faces_adj[gids_level_2[fine_faces_adj] == cid_test]
+                edges_other_face = fine_edges[
+                    (fine_adjacencies[:, 0] == _face) | (fine_adjacencies[:, 1] == _face)
+                ]
+                fine_faces_adj_edges = fine_adjacencies[edges_other_face]
+                fine_faces_adj_edges = fine_faces_adj_edges[fine_faces_adj_edges != _face]
+                gids_level_2[_face] = cid
+                cids_fine_faces_adj_edges = gids_level_2[fine_faces_adj_edges]
+                faces_to_replace_coarse_id = fine_faces_adj_edges[cids_fine_faces_adj_edges == cross_coarse_id]
+                coarse_ids_candidatos = np.unique(coarse_adj_test[test])
+                coarse_ids_candidatos = coarse_ids_candidatos[
+                    (coarse_ids_candidatos != cid) & (coarse_ids_candidatos != cross_coarse_id)
+                ]
+                for face in faces_to_replace_coarse_id:
+                    face_centroid = fine_faces_centroids[face]
+                    coarse_centroids_candidatos = coarse_centroids[coarse_ids_candidatos]
+                    dists = np.linalg.norm(face_centroid - coarse_centroids_candidatos, axis=1)
+                    cid_selected = coarse_ids_candidatos[dists <= dists.min()]
+                    gids_level_2[face] = cid_selected
+                
+                coarse_ids_to_recalculate_centroids = np.append(coarse_ids_candidatos, [cid, cross_coarse_id])
+                new_coarse_centroids = recalculate_coarse_centroids(level, gids_level_2, fine_faces_centroids, coarse_ids_to_recalculate_centroids)
+                coarse_centroids_2[coarse_ids_to_recalculate_centroids] = new_coarse_centroids
+
+            elif n_fine_edges == 2:
+                import pdb; pdb.set_trace()
+            
+            else:
+                pass
+    
+    return {
+        'gid_' + str(level): gids_level_2,
+        'faces_centroids_' + str(level): gids_level_2
+    }
 
 
 
@@ -686,6 +705,7 @@ def create_coarse_nodes(level, coarse_adjacencies, fine_faces_adj_by_nodes, gids
     
 # mesh_properties = create_initial_mesh_properties(mesh_path, mesh_name)
 # mesh_properties.export_data()
+# import pdb; pdb.set_trace()
 
 # mesh_properties = load_mesh_properties(mesh_name)
 # fine_edges_nodes_centroids = mesh_properties.nodes_centroids[
@@ -699,47 +719,55 @@ def create_coarse_nodes(level, coarse_adjacencies, fine_faces_adj_by_nodes, gids
 # })
 # mesh_properties.export_data()
 
-# mesh_properties = load_mesh_properties(mesh_name)
+mesh_properties = load_mesh_properties(mesh_name)
 # # resp = create_coarse_volumes(
 # #     1,
 # #     mesh_properties.faces_centroids[:, 0:2],
 # #     2000
 # # )
 
-# resp = create_coarse_volumes_squares(
-#     1,
-#     mesh_properties.faces_centroids[:, 0:2],
-#     10,
-#     10,
-#     mesh_properties.nodes_centroids[:, 0:2],
-#     mesh_properties.nodes_of_edges,
-#     mesh_properties.faces
-# )
+resp = create_coarse_volumes_squares(
+    1,
+    mesh_properties.faces_centroids[:, 0:2],
+    50,
+    50,
+    mesh_properties.nodes_centroids[:, 0:2],
+    mesh_properties.nodes_of_edges,
+    mesh_properties.faces
+)
 
-# resp.update(
-#     coarse_verify(
-#         1,
-#         resp['gid_1'],
-#         mesh_properties.faces_adj_by_edges,
-#         mesh_properties.bool_boundary_edges,
-#         mesh_properties.edges,
-#         resp['faces_centroids_1'],
-#         mesh_properties.faces_centroids,
-#         mesh_properties.faces
-#     )
-# )
+resp.update(
+    coarse_verify(
+        1,
+        resp['gid_1'],
+        mesh_properties.faces_adj_by_edges,
+        mesh_properties.bool_boundary_edges,
+        mesh_properties.edges,
+        resp['faces_centroids_1'],
+        mesh_properties.faces_centroids,
+        mesh_properties.faces
+    )
+)
 
 # mesh_properties.insert_data(resp)
 # mesh_properties.export_data()
 # del resp
 
-mesh_properties = load_mesh_properties(mesh_name)
+# mesh_properties = load_mesh_properties(mesh_name)
 
-resp = coarse_verify_2(
-    1,
-    mesh_properties.gid_1,
-    mesh_properties.faces_adj_by_edges
+resp.update(
+    coarse_verify_2(
+        1,
+        resp['gid_1'],
+        mesh_properties.faces_adj_by_edges,
+        mesh_properties.bool_boundary_edges, 
+        mesh_properties.edges, 
+        resp['faces_centroids_1'], 
+        mesh_properties.faces_centroids[:, 0:2]
+    )
 )
+
+mesh_properties.insert_data(resp)
 
 mesh_properties.insert_data(
     create_coarse_adjacencies(
