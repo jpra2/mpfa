@@ -7,6 +7,7 @@ import pandas as pd
 from multiscale_methods.create_dual import create_dual_2d
 from sklearn.cluster import KMeans
 from multiscale_methods.create_dual import get_local_delta
+from utils.calculate_face_properties import create_face_to_edge_distances
 
 ###
 ## run the code examples.create_cube_unstructured for generate mesh
@@ -683,24 +684,7 @@ def create_coarse_nodes(level, coarse_adjacencies, fine_faces_adj_by_nodes, gids
     
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-        
-            
-        
-    
-    
-    
-    
-    import pdb; pdb.set_trace()
+
     
     
 # mesh_properties = create_initial_mesh_properties(mesh_path, mesh_name)
@@ -719,101 +703,114 @@ def create_coarse_nodes(level, coarse_adjacencies, fine_faces_adj_by_nodes, gids
 # })
 # mesh_properties.export_data()
 
-mesh_properties = load_mesh_properties(mesh_name)
+# # mesh_properties = load_mesh_properties(mesh_name)
+# h_dist = create_face_to_edge_distances(
+#     mesh_properties.faces_centroids,
+#     mesh_properties.faces_adj_by_edges,
+#     mesh_properties.nodes_of_edges,
+#     mesh_properties.edges,
+#     mesh_properties.nodes_centroids,
+#     mesh_properties.bool_boundary_edges
+# )
+# mesh_properties.insert_data({'h_dist': h_dist})
+# mesh_properties.export_data()
+
+
 # # resp = create_coarse_volumes(
 # #     1,
 # #     mesh_properties.faces_centroids[:, 0:2],
 # #     2000
 # # )
 
-resp = create_coarse_volumes_squares(
-    1,
-    mesh_properties.faces_centroids[:, 0:2],
-    50,
-    50,
-    mesh_properties.nodes_centroids[:, 0:2],
-    mesh_properties.nodes_of_edges,
-    mesh_properties.faces
-)
+# mesh_properties = load_mesh_properties(mesh_name)
+# resp = create_coarse_volumes_squares(
+#     1,
+#     mesh_properties.faces_centroids[:, 0:2],
+#     45,
+#     45,
+#     mesh_properties.nodes_centroids[:, 0:2],
+#     mesh_properties.nodes_of_edges,
+#     mesh_properties.faces
+# )
 
-resp.update(
-    coarse_verify(
-        1,
-        resp['gid_1'],
-        mesh_properties.faces_adj_by_edges,
-        mesh_properties.bool_boundary_edges,
-        mesh_properties.edges,
-        resp['faces_centroids_1'],
-        mesh_properties.faces_centroids,
-        mesh_properties.faces
-    )
-)
+# resp.update(
+#     coarse_verify(
+#         1,
+#         resp['gid_1'],
+#         mesh_properties.faces_adj_by_edges,
+#         mesh_properties.bool_boundary_edges,
+#         mesh_properties.edges,
+#         resp['faces_centroids_1'],
+#         mesh_properties.faces_centroids,
+#         mesh_properties.faces
+#     )
+# )
+
+# # mesh_properties.insert_data(resp)
+# # mesh_properties.export_data()
+# # del resp
+
+# # mesh_properties = load_mesh_properties(mesh_name)
+
+# resp.update(
+#     coarse_verify_2(
+#         1,
+#         resp['gid_1'],
+#         mesh_properties.faces_adj_by_edges,
+#         mesh_properties.bool_boundary_edges, 
+#         mesh_properties.edges, 
+#         resp['faces_centroids_1'], 
+#         mesh_properties.faces_centroids[:, 0:2]
+#     )
+# )
 
 # mesh_properties.insert_data(resp)
-# mesh_properties.export_data()
-# del resp
 
-# mesh_properties = load_mesh_properties(mesh_name)
-
-resp.update(
-    coarse_verify_2(
-        1,
-        resp['gid_1'],
-        mesh_properties.faces_adj_by_edges,
-        mesh_properties.bool_boundary_edges, 
-        mesh_properties.edges, 
-        resp['faces_centroids_1'], 
-        mesh_properties.faces_centroids[:, 0:2]
-    )
-)
-
-mesh_properties.insert_data(resp)
-
-mesh_properties.insert_data(
-    create_coarse_adjacencies(
-        1, 
-        mesh_properties.faces_adj_by_edges,
-        mesh_properties.gid_1,
-        mesh_properties.bool_boundary_edges,
-        mesh_properties.edges,
-        mesh_properties.edges_centroids[:, 0:2]
-    )
-)
-
-# test_coarse_adjacencies(
-#     1,
-#     mesh_properties.adjacencies_1,
-#     mesh_properties.gid_1,
-#     mesh_properties.faces_adj_by_edges,
-#     mesh_properties.edges
+# mesh_properties.insert_data(
+#     create_coarse_adjacencies(
+#         1, 
+#         mesh_properties.faces_adj_by_edges,
+#         mesh_properties.gid_1,
+#         mesh_properties.bool_boundary_edges,
+#         mesh_properties.edges,
+#         mesh_properties.edges_centroids[:, 0:2]
+#     )
 # )
-# import pdb; pdb.set_trace()
 
+# # test_coarse_adjacencies(
+# #     1,
+# #     mesh_properties.adjacencies_1,
+# #     mesh_properties.gid_1,
+# #     mesh_properties.faces_adj_by_edges,
+# #     mesh_properties.edges
+# # )
+# # import pdb; pdb.set_trace()
+
+# # mesh_properties.export_data()
+
+# # mesh_properties = load_mesh_properties(mesh_name)
+# mesh_properties.insert_data(
+#     create_coarse_nodes(
+#         1,
+#         mesh_properties.adjacencies_1,
+#         mesh_properties.faces_adj_by_nodes,
+#         mesh_properties.gid_1,
+#         mesh_properties.nodes,
+#         mesh_properties.bool_boundary_nodes,
+#         mesh_properties.nodes_of_edges,
+#         mesh_properties.bool_boundary_edges,
+#         mesh_properties.bool_intersect_fine_edges_1,
+#         mesh_properties.faces_adj_by_edges,
+#         mesh_properties.bool_boundary_edges_1,
+#         mesh_properties.edges,
+#         mesh_properties.edges_1,
+#         mesh_properties.nodes_centroids[:, 0:2],
+#         mesh_properties.faces
+#     )
+# )
 # mesh_properties.export_data()
 
-# mesh_properties = load_mesh_properties(mesh_name)
-mesh_properties.insert_data(
-    create_coarse_nodes(
-        1,
-        mesh_properties.adjacencies_1,
-        mesh_properties.faces_adj_by_nodes,
-        mesh_properties.gid_1,
-        mesh_properties.nodes,
-        mesh_properties.bool_boundary_nodes,
-        mesh_properties.nodes_of_edges,
-        mesh_properties.bool_boundary_edges,
-        mesh_properties.bool_intersect_fine_edges_1,
-        mesh_properties.faces_adj_by_edges,
-        mesh_properties.bool_boundary_edges_1,
-        mesh_properties.edges,
-        mesh_properties.edges_1,
-        mesh_properties.nodes_centroids[:, 0:2],
-        mesh_properties.faces
-    )
-)
-# mesh_properties.export_data()
-
-# mesh_properties = load_mesh_properties(mesh_name)
+mesh_properties = load_mesh_properties(mesh_name)
 mesh_properties.insert_data(
     create_dual_2d(
         1,
@@ -827,7 +824,8 @@ mesh_properties.insert_data(
         mesh_properties.faces_adj_by_nodes,
         mesh_properties.adjacencies_1,
         mesh_properties.edges_centroids[:, 0:2],
-        mesh_properties.faces        
+        mesh_properties.faces,
+        mesh_properties.h_dist    
     )
 )
 # mesh_properties.export_data()
