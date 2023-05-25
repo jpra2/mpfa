@@ -476,10 +476,9 @@ def coarse_verify(level, gids_level, fine_adjacencies, fine_bool_boundary_edges,
                 others_coarse_ids = coarse_id_faces_adj[coarse_id_faces_adj != coarse_id_face]
                 selected_coarse_id = others_coarse_ids[0]
                 gids_level_2[face] = selected_coarse_id
-                fine_gids_in_coarse_selected_id = fine_faces[gids_level == selected_coarse_id]
-                centroids = fine_faces_centroids[fine_gids_in_coarse_selected_id]
-                coarse_centroid = np.mean(centroids, axis=0)
-                coarse_centroids_2[selected_coarse_id] = coarse_centroid
+                coarse_ids_to_recalculate_centroids = np.append(others_coarse_ids, [coarse_id_face])
+                new_centroids = recalculate_coarse_centroids(level, gids_level_2, ine_faces_centroids, coarse_ids_to_recalculate_centroids)
+                coarse_centroids_2[coarse_ids_to_recalculate_centroids] = new_centroids
                 
                 
     return {
@@ -736,29 +735,31 @@ def create_coarse_h_dist(level, coarse_adjacencies, coarse_edges, coarse_nodes_o
 # #     2000
 # # )
 
-# mesh_properties = load_mesh_properties(mesh_name)
-# resp = create_coarse_volumes_squares(
-#     1,
-#     mesh_properties.faces_centroids[:, 0:2],
-#     45,
-#     45,
-#     mesh_properties.nodes_centroids[:, 0:2],
-#     mesh_properties.nodes_of_edges,
-#     mesh_properties.faces
-# )
+mesh_properties = load_mesh_properties(mesh_name)
+resp = create_coarse_volumes_squares(
+    1,
+    mesh_properties.faces_centroids[:, 0:2],
+    45,
+    45,
+    mesh_properties.nodes_centroids[:, 0:2],
+    mesh_properties.nodes_of_edges,
+    mesh_properties.faces
+)
 
-# resp.update(
-#     coarse_verify(
-#         1,
-#         resp['gid_1'],
-#         mesh_properties.faces_adj_by_edges,
-#         mesh_properties.bool_boundary_edges,
-#         mesh_properties.edges,
-#         resp['faces_centroids_1'],
-#         mesh_properties.faces_centroids,
-#         mesh_properties.faces
-#     )
-# )
+resp.update(
+    coarse_verify(
+        1,
+        resp['gid_1'],
+        mesh_properties.faces_adj_by_edges,
+        mesh_properties.bool_boundary_edges,
+        mesh_properties.edges,
+        resp['faces_centroids_1'],
+        mesh_properties.faces_centroids,
+        mesh_properties.faces
+    )
+)
+
+import pdb; pdb.set_trace()
 
 # resp.update(
 #     coarse_verify_2(
