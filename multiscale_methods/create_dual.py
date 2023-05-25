@@ -280,15 +280,14 @@ def create_dual_2d(
             dual_edges = []
             cids = np.unique(coarse_gids)
             
-            coarse_adj_fine = coarse_gids[fine_adjacencies]
+            coarse_adj_fine = coarse_gids.astype(np.int64)[fine_adjacencies]
             coarse_adj_fine[fine_adjacencies[:,1] == -1, 1] = -1
             
             coarse_boundary_faces = np.unique(coarse_adj_fine[:,0][coarse_adj_fine[:, 1] == -1])
             
             cids = np.setdiff1d(cids, coarse_boundary_faces)
             bool_coarse_boundary_edges = coarse_adjacencies[:, 1] == -1
-            bool_coarse_internal_edges = ~bool_coarse_boundary_edges
-            
+            bool_coarse_internal_edges = ~bool_coarse_boundary_edges            
 
             for coarse_adj in coarse_adjacencies[bool_coarse_internal_edges]:
                 if len(np.intersect1d(coarse_adj, coarse_boundary_faces)) > 1:

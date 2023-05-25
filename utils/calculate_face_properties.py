@@ -226,8 +226,11 @@ def distance_from_point_to_line(point, line_point_1, line_point_2):
     p2 = line_point_2
 
     p3 = point
-    distance = np.abs(norm(np.cross(p2-p1, p1-p3)))/norm(p2-p1)
-    
+    try:
+        distance = np.abs(norm(np.cross(p2-p1, p1-p3)))/norm(p2-p1)
+    except:
+        import pdb; pdb.set_trace()
+        
     return distance
 
 def create_face_to_edge_distances(faces_centroids, faces_adj_by_edges, nodes_of_edges, edges, nodes_centroids, bool_boundary_edges):
@@ -239,10 +242,13 @@ def create_face_to_edge_distances(faces_centroids, faces_adj_by_edges, nodes_of_
     
     for edge, faces in zip(internal_edges, faces_adj_by_edges[bool_internal_edges]):
         centroids_of_nodes_edge = nodes_centroids[nodes_of_edges[edge]]
-        face_to_edge_distance[edge][:] = [
-            distance_from_point_to_line(faces_centroids[faces[0]], centroids_of_nodes_edge[0], centroids_of_nodes_edge[1]),
-            distance_from_point_to_line(faces_centroids[faces[1]], centroids_of_nodes_edge[0], centroids_of_nodes_edge[1])
-        ]
+        try:
+            face_to_edge_distance[edge][:] = [
+                distance_from_point_to_line(faces_centroids[faces[0]], centroids_of_nodes_edge[0], centroids_of_nodes_edge[1]),
+                distance_from_point_to_line(faces_centroids[faces[1]], centroids_of_nodes_edge[0], centroids_of_nodes_edge[1])
+            ]
+        except:
+            import pdb; pdb.set_trace()
     
     bedges = edges[bool_boundary_edges]
     
