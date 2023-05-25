@@ -273,9 +273,10 @@ def create_dual_2d(
             dual_edges = np.setdiff1d(dual_edges, gids[dual_gids==3])
             return dual_edges 
 
-        def create_edges(coarse_gids, fine_adjacencies, coarse_adjacencies, fine_edges_centroids, fine_edges, dual_gids, fine_faces, dists, fine_faces_centroids):
+        def create_edges(coarse_gids, fine_adjacencies, coarse_adjacencies, fine_edges_centroids, fine_edges, dual_gids, fine_faces, dists, fine_faces_centroids, fine_bool_boundary_edges):
             
             defined_coarse_vols_tuples = set()
+            fine_bool_internal_edges = ~fine_bool_boundary_edges
             
             dual_edges = []
             cids = np.unique(coarse_gids)
@@ -332,9 +333,9 @@ def create_dual_2d(
                 face_vertice_cid = fine_faces[(dual_gids == 3) & (coarse_gids == cid)]
                 face_vertice_coarse_face = fine_faces[(dual_gids == 3) & (coarse_gids == coarse_face)]
                 
-                test1 = (fine_adjacencies[:, 0] == face_vertice_cid) | (fine_adjacencies[:, 1] == face_vertice_cid)
-                test2 = (fine_adjacencies[:, 0] == face_vertice_coarse_face) | (fine_adjacencies[:, 1] == face_vertice_coarse_face)
-                                
+                test1 = ((fine_adjacencies[:, 0] == face_vertice_cid) | (fine_adjacencies[:, 1] == face_vertice_cid)) & fine_bool_internal_edges
+                test2 = ((fine_adjacencies[:, 0] == face_vertice_coarse_face) | (fine_adjacencies[:, 1] == face_vertice_coarse_face)) & fine_bool_internal_edges
+
                 faces_conected_to_vertice_cid = fine_adjacencies[test1][fine_adjacencies[test1] != face_vertice_cid]
                 faces_conected_to_vertice_coarse_face = fine_adjacencies[test2][fine_adjacencies[test2] != face_vertice_coarse_face]
                 
@@ -358,7 +359,7 @@ def create_dual_2d(
             
             return np.concatenate(dual_edges)
        
-        dual_edges = create_edges(coarse_gids, adjacencies, coarse_adjacencies, fine_edges_centroids, fine_edges, dual_gids, fine_faces, fine_h_dist, centroids)
+        dual_edges = create_edges(coarse_gids, adjacencies, coarse_adjacencies, fine_edges_centroids, fine_edges, dual_gids, fine_faces, fine_h_dist, centroids, bool_boundary_edges)
         dual_gids[dual_edges] = 2
     
     create_internal_dual_edges(level)

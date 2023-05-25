@@ -389,7 +389,7 @@ def create_coarse_volumes_squares(level, faces_centroids, nx, ny, nodes_centroid
         coarse_centroids[cid] = np.mean(faces_centroids[faces_in_coarse], axis=0)
 
     return {
-        gid_name: coarse_ids,
+        gid_name: coarse_ids.astype(np.int64),
         coarse_centroids_name: coarse_centroids,
         coarse_faces_ids_name: np.arange(len(coarse_centroids))
     }        
@@ -825,19 +825,19 @@ def create_coarse_h_dist(level, coarse_adjacencies, coarse_edges, coarse_nodes_o
 
 # mesh_properties = load_mesh_properties(mesh_name)
 
-# coarse_h_dist = create_coarse_h_dist(
-#     1,
-#     mesh_properties.adjacencies_1,
-#     mesh_properties.edges_1,
-#     mesh_properties.nodes_of_edges_1,
-#     mesh_properties.nodes_centroids_1,
-#     mesh_properties.faces_centroids_1
-# )
+# # coarse_h_dist = create_coarse_h_dist(
+# #     1,
+# #     mesh_properties.adjacencies_1,
+# #     mesh_properties.edges_1,
+# #     mesh_properties.nodes_of_edges_1,
+# #     mesh_properties.nodes_centroids_1,
+# #     mesh_properties.faces_centroids_1
+# # )
 
-# mesh_properties.insert_data(coarse_h_dist)
+# # mesh_properties.insert_data(coarse_h_dist)
 
 
-# mesh_properties.insert_data(
+# mesh_properties.__dict__.update(
 #     create_dual_2d(
 #         1,
 #         mesh_properties.faces_centroids[:, 0:2],
@@ -855,6 +855,7 @@ def create_coarse_h_dist(level, coarse_adjacencies, coarse_edges, coarse_nodes_o
 #     )
 # )
 # mesh_properties.export_data()
+# import pdb; pdb.set_trace()
 
 # mesh_properties = load_mesh_properties(mesh_name)
 # resp = create_coarse_volumes_squares(
@@ -967,30 +968,30 @@ def create_coarse_h_dist(level, coarse_adjacencies, coarse_edges, coarse_nodes_o
 
 
 mesh_properties = load_mesh_properties(mesh_name)
-coarse_id_fine_2 = np.repeat(-1, len(mesh_properties.faces))
-dual_id_fine_2 = np.repeat(-1, len(mesh_properties.faces))
+# coarse_id_fine_2 = np.repeat(-1, len(mesh_properties.faces))
+# dual_id_fine_2 = np.repeat(-1, len(mesh_properties.faces))
 
-levels = np.arange(1, 3)[::-1]
+# levels = np.arange(1, 3)[::-1]
 
-gid_level_2 = mesh_properties['gid_' + str(2)]
-dual_id_level_2 = mesh_properties['dual_id_' + str(2)]
-faces_level_1 = mesh_properties['gid_' + str(1)]
-cids = np.unique(faces_level_1)
+# gid_level_2 = mesh_properties['gid_' + str(2)]
+# dual_id_level_2 = mesh_properties['dual_id_' + str(2)]
+# faces_level_1 = mesh_properties['gid_' + str(1)]
+# cids = np.unique(faces_level_1)
 
-for cid in cids:
+# for cid in cids:
     
-    coarse_id_fine_2[faces_level_1 == cid] = gid_level_2[cid]
-    dual_id_fine_2[faces_level_1 == cid] = dual_id_level_2[cid]
+#     coarse_id_fine_2[faces_level_1 == cid] = gid_level_2[cid]
+#     dual_id_fine_2[faces_level_1 == cid] = dual_id_level_2[cid]
 
 mesh_data = MeshData(mesh_path=mesh_path)
 mesh_data.create_tag('dual_id', data_type='int')
 mesh_data.insert_tag_data('dual_id', mesh_properties.dual_id_1, elements_type='faces', elements_array=mesh_properties.faces)
 mesh_data.create_tag('coarse_id', data_type='int')
 mesh_data.insert_tag_data('coarse_id', mesh_properties.gid_1.astype(np.int64), elements_type='faces', elements_array=mesh_properties.faces)
-mesh_data.create_tag('dual_id_2', data_type='int')
-mesh_data.insert_tag_data('dual_id_2', dual_id_fine_2, elements_type='faces', elements_array=mesh_properties.faces)
-mesh_data.create_tag('coarse_id_2', data_type='int')
-mesh_data.insert_tag_data('coarse_id_2', coarse_id_fine_2, elements_type='faces', elements_array=mesh_properties.faces)
+# mesh_data.create_tag('dual_id_2', data_type='int')
+# mesh_data.insert_tag_data('dual_id_2', dual_id_fine_2, elements_type='faces', elements_array=mesh_properties.faces)
+# mesh_data.create_tag('coarse_id_2', data_type='int')
+# mesh_data.insert_tag_data('coarse_id_2', coarse_id_fine_2, elements_type='faces', elements_array=mesh_properties.faces)
 mesh_data.export_all_elements_type_to_vtk(export_name='test_gids', element_type='faces')
 
 import pdb; pdb.set_trace()
