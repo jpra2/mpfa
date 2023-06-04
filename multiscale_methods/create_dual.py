@@ -317,7 +317,7 @@ def create_dual_2d(
                 ]
                 
                 if len(fine_edges_intersection) < 3:
-                    import pdb; pdb.set_trace()
+                    # import pdb; pdb.set_trace()
                     selected_edge = fine_edges_intersection[0]
                 else:
                     gcentroid = np.mean(fine_edges_centroids[fine_edges_intersection], axis=0)
