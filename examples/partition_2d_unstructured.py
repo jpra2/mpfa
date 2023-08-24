@@ -746,9 +746,106 @@ def create_coarse_h_dist(level, coarse_adjacencies, coarse_edges, coarse_nodes_o
     
             
 
+def passo1():
+    mesh_properties = create_initial_mesh_properties(mesh_path, mesh_name)
+    mesh_properties.export_data()
+    print('Passo 1\n')
+
+def passo2():
+    mesh_properties = load_mesh_properties(mesh_name)
+    fine_edges_nodes_centroids = mesh_properties.nodes_centroids[
+        mesh_properties.nodes_of_edges[
+            mesh_properties.edges
+        ]
+    ]
+    edges_centroids = np.mean(fine_edges_nodes_centroids, axis=1)
+    mesh_properties.insert_data({
+        'edges_centroids': edges_centroids
+    })
+
+    h_dist = create_face_to_edge_distances(
+        mesh_properties.faces_centroids,
+        mesh_properties.faces_adj_by_edges,
+        mesh_properties.nodes_of_edges,
+        mesh_properties.edges,
+        mesh_properties.nodes_centroids,
+        mesh_properties.bool_boundary_edges
+    )
+    mesh_properties.insert_data({'h_dist': h_dist})
+    mesh_properties.export_data()
     
+    print('Passo 2\n')
+
+def passo3():
+    mesh_properties = load_mesh_properties(mesh_name)
+    resp = create_coarse_volumes_squares(
+        1,
+        mesh_properties.faces_centroids[:, 0:2],
+        45,
+        45,
+        mesh_properties.nodes_centroids[:, 0:2],
+        mesh_properties.nodes_of_edges,
+        mesh_properties.faces
+    )
+
+    resp.update(
+        coarse_verify(
+            1,
+            resp['gid_1'],
+            mesh_properties.faces_adj_by_edges,
+            mesh_properties.bool_boundary_edges,
+            mesh_properties.edges,
+            resp['faces_centroids_1'],
+            mesh_properties.faces_centroids[:, 0:2],
+            mesh_properties.faces
+        )
+    )
+
+    resp.update(
+        coarse_verify_2(
+            1,
+            resp['gid_1'],
+            mesh_properties.faces_adj_by_edges,
+            mesh_properties.bool_boundary_edges, 
+            mesh_properties.edges, 
+            resp['faces_centroids_1'], 
+            mesh_properties.faces_centroids[:, 0:2]
+        )
+    )
+
+    mesh_properties.__dict__.update(resp)
+    mesh_properties.export_data()
+
+    print('Passo 2\n')
+
+def passo4():
+    mesh_properties = load_mesh_properties(mesh_name)
+    mesh_properties.__dict__.update(
+        create_coarse_adjacencies(
+            1, 
+            mesh_properties.faces_adj_by_edges,
+            mesh_properties.gid_1,
+            mesh_properties.bool_boundary_edges,
+            mesh_properties.edges,
+            mesh_properties.edges_centroids[:, 0:2]
+        )
+    )
+    mesh_properties.export_data()
+
+    print('Pass 4\n')
+
+
+def sequence_methods():
+    passo1()
+    passo2()
+    passo3()
+    passo4()
+
+
+
 
     
+
     
 # mesh_properties = create_initial_mesh_properties(mesh_path, mesh_name)
 # mesh_properties.export_data()
