@@ -841,11 +841,6 @@ def sequence_methods():
     passo3()
     passo4()
 
-
-
-
-    
-
     
 # mesh_properties = create_initial_mesh_properties(mesh_path, mesh_name)
 # mesh_properties.export_data()
@@ -1122,7 +1117,7 @@ def sequence_methods():
 # import pdb; pdb.set_trace()
 
 
-mesh_properties = load_mesh_properties(mesh_name)
+# mesh_properties = load_mesh_properties(mesh_name)
 # coarse_id_fine_2 = np.repeat(-1, len(mesh_properties.faces))
 # dual_id_fine_2 = np.repeat(-1, len(mesh_properties.faces))
 
@@ -1138,18 +1133,18 @@ mesh_properties = load_mesh_properties(mesh_name)
 #     coarse_id_fine_2[faces_level_1 == cid] = gid_level_2[cid]
 #     dual_id_fine_2[faces_level_1 == cid] = dual_id_level_2[cid]
 
-mesh_data = MeshData(mesh_path=mesh_path)
-mesh_data.create_tag('dual_id', data_type='int')
-mesh_data.insert_tag_data('dual_id', mesh_properties.dual_id_1, elements_type='faces', elements_array=mesh_properties.faces)
-mesh_data.create_tag('coarse_id', data_type='int')
-mesh_data.insert_tag_data('coarse_id', mesh_properties.gid_1.astype(np.int64), elements_type='faces', elements_array=mesh_properties.faces)
-# mesh_data.create_tag('dual_id_2', data_type='int')
-# mesh_data.insert_tag_data('dual_id_2', dual_id_fine_2, elements_type='faces', elements_array=mesh_properties.faces)
-# mesh_data.create_tag('coarse_id_2', data_type='int')
-# mesh_data.insert_tag_data('coarse_id_2', coarse_id_fine_2, elements_type='faces', elements_array=mesh_properties.faces)
-mesh_data.export_all_elements_type_to_vtk(export_name='test_gids', element_type='faces')
+# mesh_data = MeshData(mesh_path=mesh_path)
+# mesh_data.create_tag('dual_id', data_type='int')
+# mesh_data.insert_tag_data('dual_id', mesh_properties.dual_id_1, elements_type='faces', elements_array=mesh_properties.faces)
+# mesh_data.create_tag('coarse_id', data_type='int')
+# mesh_data.insert_tag_data('coarse_id', mesh_properties.gid_1.astype(np.int64), elements_type='faces', elements_array=mesh_properties.faces)
+# # mesh_data.create_tag('dual_id_2', data_type='int')
+# # mesh_data.insert_tag_data('dual_id_2', dual_id_fine_2, elements_type='faces', elements_array=mesh_properties.faces)
+# # mesh_data.create_tag('coarse_id_2', data_type='int')
+# # mesh_data.insert_tag_data('coarse_id_2', coarse_id_fine_2, elements_type='faces', elements_array=mesh_properties.faces)
+# mesh_data.export_all_elements_type_to_vtk(export_name='test_gids', element_type='faces')
 
-import pdb; pdb.set_trace()
+# import pdb; pdb.set_trace()
 
-print(mesh_properties)
+# print(mesh_properties)
 
