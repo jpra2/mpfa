@@ -816,7 +816,7 @@ def passo3():
     mesh_properties.__dict__.update(resp)
     mesh_properties.export_data()
 
-    print('Passo 2\n')
+    print('Passo 3\n')
 
 def passo4():
     mesh_properties = load_mesh_properties(mesh_name)
@@ -832,14 +832,74 @@ def passo4():
     )
     mesh_properties.export_data()
 
-    print('Pass 4\n')
+    print('Passo 4\n')
 
+def passo5():
+    mesh_properties = load_mesh_properties(mesh_name)
+    mesh_properties.insert_data(
+        create_coarse_nodes(
+            1,
+            mesh_properties.adjacencies_1,
+            mesh_properties.faces_adj_by_nodes,
+            mesh_properties.gid_1,
+            mesh_properties.nodes,
+            mesh_properties.bool_boundary_nodes,
+            mesh_properties.nodes_of_edges,
+            mesh_properties.bool_boundary_edges,
+            mesh_properties.bool_intersect_fine_edges_1,
+            mesh_properties.faces_adj_by_edges,
+            mesh_properties.bool_boundary_edges_1,
+            mesh_properties.edges,
+            mesh_properties.edges_1,
+            mesh_properties.nodes_centroids[:, 0:2],
+            mesh_properties.faces
+        )
+    )
+    mesh_properties.export_data()
+    print('Passo 5\n')
+    
+def passo6():
+    mesh_properties = load_mesh_properties(mesh_name)
+
+    coarse_h_dist = create_coarse_h_dist(
+        1,
+        mesh_properties.adjacencies_1,
+        mesh_properties.edges_1,
+        mesh_properties.nodes_of_edges_1,
+        mesh_properties.nodes_centroids_1,
+        mesh_properties.faces_centroids_1
+    )
+
+    mesh_properties.insert_data(coarse_h_dist)
+
+    mesh_properties.__dict__.update(
+        create_dual_2d(
+            1,
+            mesh_properties.faces_centroids[:, 0:2],
+            mesh_properties.faces_adj_by_edges,
+            mesh_properties.gid_1,
+            mesh_properties.bool_boundary_edges,
+            mesh_properties.nodes_of_edges,
+            mesh_properties.nodes_centroids[:, 0:2],
+            mesh_properties.edges,
+            mesh_properties.faces_adj_by_nodes,
+            mesh_properties.adjacencies_1,
+            mesh_properties.edges_centroids[:, 0:2],
+            mesh_properties.faces,
+            mesh_properties.h_dist    
+        )
+    )
+    mesh_properties.export_data()
+    print('Passo 6\n')
+    
 
 def sequence_methods():
-    passo1()
-    passo2()
-    passo3()
-    passo4()
+    # passo1()
+    # passo2()
+    # passo3()
+    # passo4()
+    # passo5()
+    passo6()
 
     
 # mesh_properties = create_initial_mesh_properties(mesh_path, mesh_name)
